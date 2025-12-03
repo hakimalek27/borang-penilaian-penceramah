@@ -126,24 +126,30 @@
 	.evaluation-form {
 		display: flex;
 		flex-direction: column;
-		gap: 1rem;
+		gap: 0.875rem;
 	}
 
 	.form-instruction {
-		font-size: 0.9rem;
+		font-size: 0.8rem;
 		color: #666;
-		margin-bottom: 0.5rem;
+		margin-bottom: 0.25rem;
+		font-weight: 500;
 	}
 
 	.question-row {
 		display: flex;
 		gap: 0.5rem;
+		padding: 0.625rem;
+		background: white;
+		border-radius: 0.5rem;
+		border: 1px solid #e8e8e8;
 	}
 
 	.question-number {
-		font-weight: 600;
+		font-weight: 700;
 		color: #1a5f2a;
-		min-width: 1.5rem;
+		min-width: 1.25rem;
+		font-size: 0.85rem;
 	}
 
 	.question-content {
@@ -151,14 +157,16 @@
 	}
 
 	.question-text {
-		font-size: 0.95rem;
+		font-size: 0.85rem;
 		color: #333;
-		margin-bottom: 0.5rem;
+		margin-bottom: 0.625rem;
+		line-height: 1.4;
 	}
 
 	.rating-options {
 		display: flex;
-		gap: 0.5rem;
+		gap: 0.375rem;
+		justify-content: flex-start;
 	}
 
 	.rating-option {
@@ -166,6 +174,7 @@
 		align-items: center;
 		justify-content: center;
 		cursor: pointer;
+		touch-action: manipulation;
 	}
 
 	.rating-option input {
@@ -181,52 +190,72 @@
 		justify-content: center;
 		width: 44px;
 		height: 44px;
-		border: 2px solid #ddd;
-		border-radius: 0.5rem;
-		font-weight: 600;
-		color: #666;
-		transition: all 0.2s ease;
+		border: 2px solid #e0e0e0;
+		border-radius: 0.625rem;
+		font-weight: 700;
+		font-size: 1rem;
+		color: #888;
+		transition: all 0.15s ease;
+		background: white;
 	}
 
 	.rating-option input:checked + .rating-label {
-		background: #1a5f2a;
+		background: linear-gradient(135deg, #1a5f2a, #2d8a3e);
 		border-color: #1a5f2a;
 		color: white;
+		transform: scale(1.05);
+		box-shadow: 0 2px 8px rgba(26, 95, 42, 0.3);
 	}
 
-	.rating-option:hover .rating-label {
-		border-color: #1a5f2a;
+	.rating-option:active .rating-label {
+		transform: scale(0.95);
 	}
 
-	.rating-option input:focus + .rating-label {
-		box-shadow: 0 0 0 3px rgba(26, 95, 42, 0.2);
+	.rating-option input:focus-visible + .rating-label {
+		box-shadow: 0 0 0 3px rgba(26, 95, 42, 0.3);
 	}
 
 	.recommendation-section {
-		margin-top: 0.5rem;
-		padding-top: 1rem;
-		border-top: 1px solid #eee;
+		margin-top: 0.25rem;
+		padding: 0.75rem;
+		background: white;
+		border-radius: 0.5rem;
+		border: 1px solid #e8e8e8;
+	}
+
+	.recommendation-section .question-text {
+		font-weight: 600;
+		color: #1a5f2a;
+		margin-bottom: 0.75rem;
 	}
 
 	.recommendation-options {
 		display: flex;
-		gap: 1rem;
+		gap: 0.75rem;
 	}
 
 	.recommendation-option {
+		flex: 1;
 		display: flex;
 		align-items: center;
+		justify-content: center;
 		gap: 0.5rem;
 		cursor: pointer;
-		padding: 0.5rem 1rem;
-		border: 2px solid #ddd;
-		border-radius: 0.5rem;
-		transition: all 0.2s ease;
+		padding: 0.75rem 1rem;
+		border: 2px solid #e0e0e0;
+		border-radius: 0.625rem;
+		transition: all 0.15s ease;
+		background: white;
+		touch-action: manipulation;
+	}
+
+	.recommendation-option:active {
+		transform: scale(0.98);
 	}
 
 	.recommendation-option:has(input:checked) {
 		border-color: #1a5f2a;
-		background: #e8f5e9;
+		background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
 	}
 
 	.recommendation-option input {
@@ -236,7 +265,47 @@
 	}
 
 	.recommendation-label {
-		font-weight: 500;
+		font-weight: 600;
 		color: #333;
+		font-size: 0.95rem;
+	}
+
+	/* Mobile optimizations */
+	@media (max-width: 480px) {
+		.question-row {
+			padding: 0.5rem;
+		}
+
+		.question-text {
+			font-size: 0.8rem;
+		}
+
+		.rating-label {
+			width: 40px;
+			height: 40px;
+			font-size: 0.95rem;
+		}
+
+		.rating-options {
+			gap: 0.25rem;
+		}
+
+		.recommendation-option {
+			padding: 0.625rem 0.75rem;
+		}
+
+		.recommendation-label {
+			font-size: 0.9rem;
+		}
+	}
+
+	/* Extra small screens */
+	@media (max-width: 360px) {
+		.rating-label {
+			width: 36px;
+			height: 36px;
+			font-size: 0.9rem;
+			border-radius: 0.5rem;
+		}
 	}
 </style>

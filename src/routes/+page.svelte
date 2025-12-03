@@ -410,10 +410,10 @@
 		inset: 0;
 		background: rgba(0, 0, 0, 0.6);
 		display: flex;
-		align-items: center;
+		align-items: flex-end;
 		justify-content: center;
 		z-index: 1000;
-		padding: 1rem;
+		padding: 0;
 		animation: fadeIn 0.3s ease;
 	}
 
@@ -424,19 +424,22 @@
 
 	.modal-content {
 		background: white;
-		border-radius: 1rem;
-		padding: 2rem;
-		max-width: 400px;
+		border-radius: 1.5rem 1.5rem 0 0;
+		padding: 1.5rem;
+		padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+		max-width: 100%;
 		width: 100%;
 		text-align: center;
-		box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+		box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.2);
 		animation: slideUp 0.3s ease;
+		max-height: 90vh;
+		overflow-y: auto;
 	}
 
 	@keyframes slideUp {
 		from { 
 			opacity: 0;
-			transform: translateY(20px);
+			transform: translateY(100%);
 		}
 		to { 
 			opacity: 1;
@@ -445,59 +448,69 @@
 	}
 
 	.modal-icon {
-		font-size: 4rem;
-		margin-bottom: 1rem;
+		font-size: 3rem;
+		margin-bottom: 0.75rem;
 	}
 
 	.modal-title {
-		font-size: 1.5rem;
+		font-size: 1.25rem;
 		color: #1a5f2a;
-		margin-bottom: 1rem;
+		margin-bottom: 0.75rem;
+		font-weight: 700;
 	}
 
 	.modal-message {
 		color: #333;
-		font-size: 1rem;
+		font-size: 0.95rem;
 		line-height: 1.6;
-		margin-bottom: 0.75rem;
+		margin-bottom: 0.5rem;
 	}
 
 	.modal-submessage {
 		color: #666;
-		font-size: 0.9rem;
+		font-size: 0.85rem;
 		font-style: italic;
-		margin-bottom: 1.5rem;
+		margin-bottom: 1.25rem;
 	}
 
 	.modal-button {
 		background: #1a5f2a;
 		color: white;
 		border: none;
-		padding: 0.875rem 2rem;
-		border-radius: 0.5rem;
+		padding: 1rem 2rem;
+		border-radius: 0.75rem;
 		font-size: 1rem;
 		font-weight: 600;
 		cursor: pointer;
-		transition: background 0.2s ease;
+		transition: all 0.2s ease;
+		width: 100%;
+		max-width: 280px;
+		touch-action: manipulation;
 	}
 
 	.modal-button:hover {
 		background: #145022;
+		transform: scale(1.02);
+	}
+
+	.modal-button:active {
+		transform: scale(0.98);
 	}
 
 	.modal-button.secondary {
-		background: #6c757d;
+		background: #f5f5f5;
+		color: #666;
 	}
 
 	.modal-button.secondary:hover {
-		background: #5a6268;
+		background: #e8e8e8;
 	}
 
 	.modal-buttons {
 		display: flex;
+		flex-direction: column;
 		gap: 0.75rem;
-		justify-content: center;
-		flex-wrap: wrap;
+		align-items: center;
 	}
 
 	.clear-draft-btn {
@@ -508,8 +521,9 @@
 		color: #999;
 		font-size: 0.85rem;
 		cursor: pointer;
-		padding: 0.5rem 1rem;
+		padding: 0.75rem 1rem;
 		transition: color 0.2s ease;
+		touch-action: manipulation;
 	}
 
 	.clear-draft-btn:hover {
@@ -518,56 +532,69 @@
 
 	.banner {
 		text-align: center;
-		margin-bottom: 2rem;
+		margin-bottom: 1.5rem;
+		padding-top: 0.5rem;
 	}
 
 	.banner-image {
-		width: 100%;
-		max-height: 200px;
+		width: calc(100% + 1.5rem);
+		margin-left: -0.75rem;
+		max-height: 150px;
 		object-fit: cover;
-		border-radius: 0.75rem;
+		border-radius: 0;
 		margin-bottom: 1rem;
 	}
 
 	h1 {
-		font-size: 1.5rem;
+		font-size: 1.25rem;
 		color: #1a5f2a;
 		margin-bottom: 0.25rem;
+		font-weight: 700;
+		line-height: 1.3;
 	}
 
 	.subtitle {
 		color: #666;
-		font-size: 1rem;
+		font-size: 0.9rem;
 	}
 
 	.month-info {
-		color: #1a5f2a;
+		display: inline-block;
+		background: linear-gradient(135deg, #1a5f2a, #2d8a3e);
+		color: white;
 		font-weight: 600;
-		margin-top: 0.5rem;
+		margin-top: 0.75rem;
+		padding: 0.5rem 1.25rem;
+		border-radius: 2rem;
+		font-size: 0.9rem;
 	}
 
 	.section-desc {
 		color: #666;
-		font-size: 0.9rem;
+		font-size: 0.85rem;
 		margin-bottom: 1rem;
+		line-height: 1.5;
 	}
 
 	.week-section {
-		margin-bottom: 1.5rem;
+		margin-bottom: 1.25rem;
 	}
 
 	.week-title {
-		font-size: 1rem;
-		color: #333;
+		font-size: 0.9rem;
+		color: #1a5f2a;
 		margin-bottom: 0.75rem;
-		padding-left: 0.5rem;
+		padding: 0.5rem 0.75rem;
+		background: linear-gradient(90deg, #f0f7f1, transparent);
 		border-left: 3px solid #1a5f2a;
+		border-radius: 0 0.25rem 0.25rem 0;
+		font-weight: 600;
 	}
 
 	.lecturer-grid {
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
+		gap: 0.5rem;
 	}
 
 	.no-lectures {
@@ -577,44 +604,121 @@
 		text-align: center;
 		background: #f9f9f9;
 		border-radius: 0.5rem;
+		font-size: 0.9rem;
 	}
 
 	.scale-legend {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.5rem 1rem;
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		gap: 0.5rem;
 		padding: 1rem;
-		background: #f0f7f1;
-		border-radius: 0.5rem;
-		font-size: 0.85rem;
-		margin-bottom: 1.5rem;
+		background: linear-gradient(135deg, #f0f7f1, #e8f5e9);
+		border-radius: 0.75rem;
+		font-size: 0.8rem;
+		margin-bottom: 1.25rem;
 	}
 
 	.scale-legend strong {
-		width: 100%;
+		grid-column: 1 / -1;
 		color: #1a5f2a;
+		font-size: 0.85rem;
+		margin-bottom: 0.25rem;
 	}
 
 	.scale-legend span {
 		color: #555;
+		background: white;
+		padding: 0.4rem 0.6rem;
+		border-radius: 0.375rem;
+		text-align: center;
+		font-weight: 500;
 	}
 
 	.submit-section {
 		text-align: center;
-		padding: 1rem 0 2rem;
+		padding: 1rem 0;
+		padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+		position: sticky;
+		bottom: 0;
+		background: linear-gradient(to top, #f5f5f5 80%, transparent);
+		margin: 0 -0.75rem;
+		padding-left: 0.75rem;
+		padding-right: 0.75rem;
 	}
 
+	/* Desktop improvements */
 	@media (min-width: 640px) {
+		.modal-overlay {
+			align-items: center;
+			padding: 1rem;
+		}
+
+		.modal-content {
+			border-radius: 1rem;
+			max-width: 420px;
+			padding: 2rem;
+		}
+
+		.modal-buttons {
+			flex-direction: row;
+			justify-content: center;
+		}
+
+		.modal-button {
+			width: auto;
+		}
+
+		.banner-image {
+			width: 100%;
+			margin-left: 0;
+			max-height: 200px;
+			border-radius: 0.75rem;
+		}
+
 		h1 {
 			font-size: 1.75rem;
 		}
 
 		.scale-legend {
+			display: flex;
 			flex-wrap: nowrap;
+			gap: 1rem;
 		}
 
 		.scale-legend strong {
 			width: auto;
+		}
+
+		.scale-legend span {
+			background: transparent;
+			padding: 0;
+		}
+
+		.submit-section {
+			position: static;
+			background: transparent;
+			margin: 0;
+			padding: 1rem 0 2rem;
+		}
+	}
+
+	/* Extra small screens */
+	@media (max-width: 360px) {
+		h1 {
+			font-size: 1.1rem;
+		}
+
+		.subtitle {
+			font-size: 0.8rem;
+		}
+
+		.month-info {
+			font-size: 0.8rem;
+			padding: 0.4rem 1rem;
+		}
+
+		.scale-legend {
+			font-size: 0.75rem;
 		}
 	}
 </style>

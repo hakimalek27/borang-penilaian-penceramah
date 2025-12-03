@@ -37,12 +37,15 @@
 		justify-content: center;
 		gap: 0.5rem;
 		border: none;
-		border-radius: 0.5rem;
-		font-weight: 500;
+		border-radius: 0.75rem;
+		font-weight: 600;
 		cursor: pointer;
-		transition: all 0.2s ease;
-		min-height: 44px;
-		min-width: 44px;
+		transition: all 0.15s ease;
+		min-height: 48px;
+		min-width: 48px;
+		touch-action: manipulation;
+		-webkit-tap-highlight-color: transparent;
+		user-select: none;
 	}
 
 	.btn:disabled {
@@ -50,36 +53,51 @@
 		cursor: not-allowed;
 	}
 
+	.btn:active:not(:disabled) {
+		transform: scale(0.97);
+	}
+
+	.btn:focus-visible {
+		outline: 2px solid currentColor;
+		outline-offset: 2px;
+	}
+
 	.btn-primary {
-		background-color: #1a5f2a;
+		background: linear-gradient(135deg, #1a5f2a, #2d8a3e);
 		color: white;
+		box-shadow: 0 2px 8px rgba(26, 95, 42, 0.25);
 	}
 
 	.btn-primary:hover:not(:disabled) {
-		background-color: #14491f;
+		background: linear-gradient(135deg, #14491f, #1a5f2a);
+		box-shadow: 0 4px 12px rgba(26, 95, 42, 0.35);
 	}
 
 	.btn-secondary {
-		background-color: #e5e5e5;
+		background: linear-gradient(135deg, #f5f5f5, #e8e8e8);
 		color: #333;
+		box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
 	}
 
 	.btn-secondary:hover:not(:disabled) {
-		background-color: #d5d5d5;
+		background: linear-gradient(135deg, #e8e8e8, #d8d8d8);
 	}
 
 	.btn-danger {
-		background-color: #dc3545;
+		background: linear-gradient(135deg, #dc3545, #c82333);
 		color: white;
+		box-shadow: 0 2px 8px rgba(220, 53, 69, 0.25);
 	}
 
 	.btn-danger:hover:not(:disabled) {
-		background-color: #c82333;
+		background: linear-gradient(135deg, #c82333, #bd2130);
 	}
 
 	.btn-sm {
 		padding: 0.5rem 1rem;
 		font-size: 0.875rem;
+		min-height: 40px;
+		border-radius: 0.5rem;
 	}
 
 	.btn-md {
@@ -88,14 +106,16 @@
 	}
 
 	.btn-lg {
-		padding: 1rem 2rem;
-		font-size: 1.125rem;
+		padding: 1rem 2.5rem;
+		font-size: 1.1rem;
+		width: 100%;
+		max-width: 320px;
 	}
 
 	.spinner {
-		width: 1em;
-		height: 1em;
-		border: 2px solid currentColor;
+		width: 1.25em;
+		height: 1.25em;
+		border: 2.5px solid currentColor;
 		border-right-color: transparent;
 		border-radius: 50%;
 		animation: spin 0.75s linear infinite;
@@ -103,5 +123,14 @@
 
 	@keyframes spin {
 		to { transform: rotate(360deg); }
+	}
+
+	/* Mobile optimizations */
+	@media (max-width: 480px) {
+		.btn-lg {
+			padding: 0.875rem 2rem;
+			font-size: 1rem;
+			max-width: 100%;
+		}
 	}
 </style>
