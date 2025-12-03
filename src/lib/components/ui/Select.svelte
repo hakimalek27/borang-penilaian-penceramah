@@ -39,6 +39,7 @@
 		id={selectId}
 		bind:value
 		class:error={error}
+		required={required}
 		{...rest}
 	>
 		<option value="" disabled>{placeholder}</option>

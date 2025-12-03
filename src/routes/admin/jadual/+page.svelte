@@ -8,6 +8,8 @@
 
 	let showAddForm = $state(false);
 	let deleteConfirmId = $state<string | null>(null);
+	let formError = $state<string | null>(null);
+	let isSubmitting = $state(false);
 
 	// Form fields
 	let minggu = $state(1);
@@ -92,11 +94,19 @@
 	{#if showAddForm}
 		<div class="form-card">
 			<h2>Tambah Sesi Kuliah</h2>
+			{#if formError}
+				<div class="alert alert-error">{formError}</div>
+			{/if}
 			<form method="POST" action="?/create" use:enhance={() => {
+				formError = null;
+				isSubmitting = true;
 				return async ({ result, update }) => {
+					isSubmitting = false;
 					if (result.type === 'success') {
 						showAddForm = false;
 						resetForm();
+					} else if (result.type === 'failure') {
+						formError = (result.data as { error?: string })?.error || 'Ralat semasa menyimpan';
 					}
 					await update();
 				};
@@ -112,7 +122,7 @@
 				</div>
 				
 				<div class="form-actions">
-					<Button type="submit">Simpan</Button>
+					<Button type="submit" loading={isSubmitting}>Simpan</Button>
 					<Button type="button" variant="secondary" onclick={() => showAddForm = false}>Batal</Button>
 				</div>
 			</form>
@@ -323,5 +333,17 @@
 		font-style: italic;
 		text-align: center;
 		padding: 1rem;
+	}
+
+	.alert {
+		padding: 0.75rem 1rem;
+		border-radius: 0.5rem;
+		margin-bottom: 1rem;
+	}
+
+	.alert-error {
+		background: #ffebee;
+		color: #c62828;
+		border: 1px solid #ef9a9a;
 	}
 </style>
