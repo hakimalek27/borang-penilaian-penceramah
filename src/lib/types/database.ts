@@ -1,7 +1,7 @@
 // TypeScript types untuk database Sistem Penilaian Kuliah
 
 export type Hari = 'Isnin' | 'Selasa' | 'Rabu' | 'Khamis' | 'Jumaat' | 'Sabtu' | 'Ahad';
-export type JenisKuliah = 'Subuh' | 'Maghrib';
+export type JenisKuliah = 'Subuh' | 'Maghrib' | 'Tazkirah Jumaat';
 
 export interface Lecturer {
 	id: string;

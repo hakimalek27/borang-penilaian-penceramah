@@ -35,7 +35,8 @@
 
 	const jenisOptions = [
 		{ value: 'Subuh', label: 'Kuliah Subuh' },
-		{ value: 'Maghrib', label: 'Kuliah Maghrib' }
+		{ value: 'Maghrib', label: 'Kuliah Maghrib' },
+		{ value: 'Tazkirah Jumaat', label: 'Tazkirah Jumaat' }
 	];
 
 	const monthOptions = data.monthNames.map((name, i) => ({ value: i + 1, label: name }));
