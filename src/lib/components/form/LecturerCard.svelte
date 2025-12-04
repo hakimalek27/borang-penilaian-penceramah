@@ -42,8 +42,8 @@
 		<div class="lecturer-info">
 			<h4 class="lecturer-name">{lecturer?.nama || 'Penceramah'}</h4>
 			<div class="lecture-details">
-				<span class="lecture-type" class:subuh={session.jenis_kuliah === 'Subuh'}>
-					Kuliah {session.jenis_kuliah}
+				<span class="lecture-type" class:subuh={session.jenis_kuliah === 'Subuh'} class:tazkirah={session.jenis_kuliah === 'Tazkirah Jumaat'}>
+					{session.jenis_kuliah === 'Tazkirah Jumaat' ? session.jenis_kuliah : `Kuliah ${session.jenis_kuliah}`}
 				</span>
 				<span class="lecture-day">{session.hari}</span>
 			</div>
@@ -171,6 +171,11 @@
 	.lecture-type.subuh {
 		background: linear-gradient(135deg, #fff3e0, #ffe0b2);
 		color: #e65100;
+	}
+
+	.lecture-type.tazkirah {
+		background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+		color: #1565c0;
 	}
 
 	.lecture-day {
