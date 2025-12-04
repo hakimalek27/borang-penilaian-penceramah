@@ -7,6 +7,24 @@ const monthNames = [
 	'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'
 ];
 
+// Urutan hari dalam minggu
+const dayOrder: Record<string, number> = {
+	'Isnin': 1,
+	'Selasa': 2,
+	'Rabu': 3,
+	'Khamis': 4,
+	'Jumaat': 5,
+	'Sabtu': 6,
+	'Ahad': 7
+};
+
+// Urutan jenis kuliah: Subuh → Tazkirah Jumaat → Maghrib
+const lectureTypeOrder: Record<string, number> = {
+	'Subuh': 1,
+	'Tazkirah Jumaat': 2,
+	'Maghrib': 3
+};
+
 export const load: PageServerLoad = async ({ cookies, url }) => {
 	const supabase = createClient(cookies);
 	
@@ -22,13 +40,26 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
 			lecturer:lecturers(id, nama, gambar_url)
 		`)
 		.eq('bulan', month)
-		.eq('tahun', year)
-		.order('minggu', { ascending: true })
-		.order('hari', { ascending: true });
+		.eq('tahun', year);
 
 	if (sessionsError) {
 		console.error('Error fetching sessions:', sessionsError);
 	}
+
+	// Sort sessions by minggu, then hari, then jenis_kuliah
+	const sortedSessions = sessions?.sort((a, b) => {
+		// Sort by minggu first
+		if (a.minggu !== b.minggu) {
+			return a.minggu - b.minggu;
+		}
+		// Then by hari (day of week)
+		const dayDiff = (dayOrder[a.hari] || 99) - (dayOrder[b.hari] || 99);
+		if (dayDiff !== 0) {
+			return dayDiff;
+		}
+		// Then by jenis_kuliah
+		return (lectureTypeOrder[a.jenis_kuliah] || 99) - (lectureTypeOrder[b.jenis_kuliah] || 99);
+	}) || [];
 
 	// Fetch all lecturers for dropdown
 	const { data: lecturers } = await supabase
@@ -38,16 +69,14 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
 		.order('nama', { ascending: true });
 
 	// Group sessions by week
-	const sessionsByWeek: Record<number, typeof sessions> = {};
+	const sessionsByWeek: Record<number, typeof sortedSessions> = {};
 	for (let week = 1; week <= 5; week++) {
 		sessionsByWeek[week] = [];
 	}
 
-	if (sessions) {
-		for (const session of sessions) {
-			if (sessionsByWeek[session.minggu]) {
-				sessionsByWeek[session.minggu]!.push(session);
-			}
+	for (const session of sortedSessions) {
+		if (sessionsByWeek[session.minggu]) {
+			sessionsByWeek[session.minggu]!.push(session);
 		}
 	}
 
