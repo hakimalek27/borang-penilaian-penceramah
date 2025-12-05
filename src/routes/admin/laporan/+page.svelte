@@ -1275,25 +1275,218 @@
 	}
 
 	@media print {
+		/* A4 page setup */
+		@page {
+			size: A4 portrait;
+			margin: 15mm 15mm 15mm 15mm;
+		}
+
 		.no-print {
 			display: none !important;
 		}
 
-		.individual-report {
-			border: none;
-			box-shadow: none;
-			padding: 0;
-		}
-
-		.page > *:not(.individual-report):not(.page-header h1) {
+		/* Hide everything except individual report */
+		.page > *:not(.individual-report) {
 			display: none !important;
 		}
 
-		.page-header {
-			margin-bottom: 1rem;
+		.page-header,
+		.filter-bar,
+		.stats-row,
+		.insights-section,
+		.charts-grid,
+		.table-card {
+			display: none !important;
 		}
 
-		.page-header .header-actions {
+		/* Individual report print styles */
+		.individual-report {
+			border: none !important;
+			box-shadow: none !important;
+			padding: 0 !important;
+			margin: 0 !important;
+			width: 100% !important;
+			max-width: 100% !important;
+		}
+
+		.report-header {
+			display: flex !important;
+			flex-direction: row !important;
+			justify-content: space-between !important;
+			align-items: center !important;
+			margin-bottom: 20px !important;
+			padding-bottom: 15px !important;
+			border-bottom: 2px solid #1a5f2a !important;
+		}
+
+		.lecturer-profile {
+			display: flex !important;
+			flex-direction: row !important;
+			gap: 15px !important;
+			align-items: center !important;
+		}
+
+		.lecturer-photo,
+		.lecturer-photo-placeholder {
+			width: 70px !important;
+			height: 70px !important;
+			border-width: 2px !important;
+		}
+
+		.lecturer-details h2 {
+			font-size: 18px !important;
+			margin-bottom: 4px !important;
+		}
+
+		.report-period,
+		.response-count {
+			font-size: 11px !important;
+			margin: 2px 0 !important;
+		}
+
+		.grade-badge {
+			width: 70px !important;
+			height: 70px !important;
+		}
+
+		.grade-letter {
+			font-size: 28px !important;
+		}
+
+		.grade-percent {
+			font-size: 10px !important;
+		}
+
+		/* Schedule section */
+		.schedule-section {
+			margin-bottom: 15px !important;
+			padding: 10px !important;
+			background: #f5f5f5 !important;
+			-webkit-print-color-adjust: exact !important;
+			print-color-adjust: exact !important;
+		}
+
+		.schedule-section h3 {
+			font-size: 12px !important;
+			margin-bottom: 8px !important;
+		}
+
+		.schedule-tags {
+			gap: 6px !important;
+		}
+
+		.schedule-tag {
+			padding: 4px 10px !important;
+			font-size: 10px !important;
+			-webkit-print-color-adjust: exact !important;
+			print-color-adjust: exact !important;
+		}
+
+		/* Scores section */
+		.scores-section {
+			margin-bottom: 15px !important;
+		}
+
+		.scores-section h3 {
+			font-size: 12px !important;
+			margin-bottom: 10px !important;
+		}
+
+		.score-grid {
+			gap: 8px !important;
+		}
+
+		.score-item {
+			padding: 8px 10px !important;
+			border-left-width: 3px !important;
+			-webkit-print-color-adjust: exact !important;
+			print-color-adjust: exact !important;
+		}
+
+		.score-item .score-label {
+			font-size: 10px !important;
+			line-height: 1.3 !important;
+		}
+
+		.score-bar-container {
+			height: 16px !important;
+			margin-top: 4px !important;
+		}
+
+		.score-bar {
+			-webkit-print-color-adjust: exact !important;
+			print-color-adjust: exact !important;
+		}
+
+		.score-value {
+			font-size: 11px !important;
+			margin-top: 4px !important;
+		}
+
+		.total-score {
+			margin-top: 10px !important;
+			padding: 8px !important;
+			font-size: 12px !important;
+			background: #f0f0f0 !important;
+			-webkit-print-color-adjust: exact !important;
+			print-color-adjust: exact !important;
+		}
+
+		/* Recommendation section */
+		.recommendation-section {
+			margin-bottom: 15px !important;
+		}
+
+		.recommendation-section h3 {
+			font-size: 12px !important;
+			margin-bottom: 8px !important;
+		}
+
+		.rec-item {
+			gap: 8px !important;
+		}
+
+		.rec-label {
+			font-size: 11px !important;
+		}
+
+		.rec-bar-container {
+			height: 14px !important;
+		}
+
+		.rec-bar {
+			-webkit-print-color-adjust: exact !important;
+			print-color-adjust: exact !important;
+		}
+
+		.rec-value {
+			font-size: 10px !important;
+		}
+
+		/* Grade legend */
+		.grade-legend {
+			margin-bottom: 0 !important;
+			padding: 8px !important;
+		}
+
+		.grade-legend h4 {
+			font-size: 10px !important;
+			margin-bottom: 6px !important;
+		}
+
+		.legend-items {
+			gap: 4px !important;
+		}
+
+		.legend-item {
+			padding: 3px 8px !important;
+			font-size: 9px !important;
+			-webkit-print-color-adjust: exact !important;
+			print-color-adjust: exact !important;
+		}
+
+		/* Report actions - hide */
+		.report-actions {
 			display: none !important;
 		}
 	}
