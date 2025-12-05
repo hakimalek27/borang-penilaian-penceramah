@@ -317,7 +317,7 @@
 				<div class="schedule-tags">
 					{#each lecturerSchedule as slot}
 						<span class="schedule-tag" class:subuh={slot.jenis_kuliah === 'Subuh'} class:maghrib={slot.jenis_kuliah === 'Maghrib'} class:tazkirah={slot.jenis_kuliah === 'Tazkirah Jumaat'}>
-							{slot.hari} - {slot.jenis_kuliah === 'Subuh' ? 'Kuliah Subuh' : slot.jenis_kuliah === 'Maghrib' ? 'Kuliah Maghrib' : 'Tazkirah Jumaat'}
+							Minggu {slot.minggu} • {slot.hari} - {slot.jenis_kuliah === 'Subuh' ? 'Kuliah Subuh' : slot.jenis_kuliah === 'Maghrib' ? 'Kuliah Maghrib' : 'Tazkirah Jumaat'}
 						</span>
 					{/each}
 				</div>
