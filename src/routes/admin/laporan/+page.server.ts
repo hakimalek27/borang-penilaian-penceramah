@@ -59,6 +59,14 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
 		.select('id, nama, gambar_url')
 		.order('nama');
 
+	// Get lecturer sessions/schedule for individual report
+	const { data: lecturerSessions } = await supabase
+		.from('lecture_sessions')
+		.select('lecturer_id, hari, jenis_kuliah')
+		.eq('bulan', month)
+		.eq('tahun', year)
+		.eq('is_active', true);
+
 	// Create lecturer names map
 	const lecturerNames: Record<string, string> = {};
 	for (const l of lecturers || []) {
@@ -74,6 +82,7 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
 		lecturerScores,
 		recommendationStats,
 		lecturers: lecturers || [],
+		lecturerSessions: lecturerSessions || [],
 		filters: {
 			month,
 			year,

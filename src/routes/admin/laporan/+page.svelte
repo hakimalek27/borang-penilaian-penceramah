@@ -289,6 +289,7 @@
 	<!-- Individual Lecturer Report -->
 	{#if showIndividualReport && selectedLecturerInfo && individualReport()}
 		{@const report = individualReport()}
+		{@const lecturerSchedule = data.lecturerSessions?.filter(s => s.lecturer_id === selectedLecturer) || []}
 		<div class="individual-report" id="individual-report">
 			<div class="report-header">
 				<div class="lecturer-profile">
@@ -309,32 +310,54 @@
 				</div>
 			</div>
 
+			<!-- Jadual Slot Ceramah -->
+			{#if lecturerSchedule.length > 0}
+			<div class="schedule-section">
+				<h3>📅 Jadual Slot Ceramah</h3>
+				<div class="schedule-tags">
+					{#each lecturerSchedule as slot}
+						<span class="schedule-tag" class:subuh={slot.jenis_kuliah === 'Subuh'} class:maghrib={slot.jenis_kuliah === 'Maghrib'} class:tazkirah={slot.jenis_kuliah === 'Tazkirah Jumaat'}>
+							{slot.hari} - {slot.jenis_kuliah === 'Subuh' ? 'Kuliah Subuh' : slot.jenis_kuliah === 'Maghrib' ? 'Kuliah Maghrib' : 'Tazkirah Jumaat'}
+						</span>
+					{/each}
+				</div>
+			</div>
+			{/if}
+
 			<div class="scores-section">
-				<h3>Markah Penilaian</h3>
+				<h3>📊 Markah Penilaian</h3>
 				<div class="score-grid">
 					<div class="score-item">
-						<div class="score-label">Q1: Kesesuaian Tajuk</div>
+						<div class="score-label">
+							<strong>Q1:</strong> Adakah tajuk kuliah yang disampaikan sesuai dengan keperluan jemaah?
+						</div>
 						<div class="score-bar-container">
 							<div class="score-bar" style="width: {(report.q1.total / report.q1.max) * 100}%; background-color: {report.gradeColor}"></div>
 						</div>
 						<div class="score-value">{report.q1.total}/{report.q1.max}</div>
 					</div>
 					<div class="score-item">
-						<div class="score-label">Q2: Penguasaan Ilmu</div>
+						<div class="score-label">
+							<strong>Q2:</strong> Adakah penceramah menguasai ilmu yang disampaikan?
+						</div>
 						<div class="score-bar-container">
 							<div class="score-bar" style="width: {(report.q2.total / report.q2.max) * 100}%; background-color: {report.gradeColor}"></div>
 						</div>
 						<div class="score-value">{report.q2.total}/{report.q2.max}</div>
 					</div>
 					<div class="score-item">
-						<div class="score-label">Q3: Cara Penyampaian</div>
+						<div class="score-label">
+							<strong>Q3:</strong> Adakah cara penyampaian penceramah menarik dan mudah difahami?
+						</div>
 						<div class="score-bar-container">
 							<div class="score-bar" style="width: {(report.q3.total / report.q3.max) * 100}%; background-color: {report.gradeColor}"></div>
 						</div>
 						<div class="score-value">{report.q3.total}/{report.q3.max}</div>
 					</div>
 					<div class="score-item">
-						<div class="score-label">Q4: Pengurusan Masa</div>
+						<div class="score-label">
+							<strong>Q4:</strong> Adakah penceramah menepati masa yang ditetapkan?
+						</div>
 						<div class="score-bar-container">
 							<div class="score-bar" style="width: {(report.q4.total / report.q4.max) * 100}%; background-color: {report.gradeColor}"></div>
 						</div>
@@ -1043,6 +1066,50 @@
 		font-weight: 500;
 	}
 
+	/* Schedule Section */
+	.schedule-section {
+		margin-bottom: 2rem;
+		padding: 1rem;
+		background: #f8f9fa;
+		border-radius: 0.5rem;
+	}
+
+	.schedule-section h3 {
+		font-size: 1rem;
+		color: #333;
+		margin-bottom: 0.75rem;
+	}
+
+	.schedule-tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+
+	.schedule-tag {
+		padding: 0.5rem 1rem;
+		border-radius: 2rem;
+		font-size: 0.85rem;
+		font-weight: 500;
+		background: #e8f5e9;
+		color: #1a5f2a;
+	}
+
+	.schedule-tag.subuh {
+		background: #fff3e0;
+		color: #e65100;
+	}
+
+	.schedule-tag.maghrib {
+		background: #e8f5e9;
+		color: #1a5f2a;
+	}
+
+	.schedule-tag.tazkirah {
+		background: #e3f2fd;
+		color: #1565c0;
+	}
+
 	.scores-section {
 		margin-bottom: 2rem;
 	}
@@ -1061,9 +1128,31 @@
 
 	.score-item {
 		display: grid;
-		grid-template-columns: 180px 1fr 80px;
-		align-items: center;
-		gap: 1rem;
+		grid-template-columns: 1fr;
+		gap: 0.5rem;
+		padding: 1rem;
+		background: #fafafa;
+		border-radius: 0.5rem;
+		border-left: 4px solid #1a5f2a;
+	}
+
+	.score-item .score-label {
+		font-size: 0.9rem;
+		color: #555;
+		line-height: 1.4;
+	}
+
+	.score-item .score-label strong {
+		color: #1a5f2a;
+	}
+
+	.score-item .score-bar-container {
+		margin-top: 0.25rem;
+	}
+
+	.score-item .score-value {
+		font-size: 1rem;
+		margin-top: 0.25rem;
 	}
 
 	.score-label {
