@@ -91,7 +91,7 @@ export const load: PageServerLoad = async ({ cookies }) => {
 	}
 
 	// Get recent comments and suggestions (general feedback, not lecturer-specific)
-	const { data: recentComments } = await supabase
+	const { data: rawComments } = await supabase
 		.from('evaluations')
 		.select(`
 			id,
@@ -104,7 +104,26 @@ export const load: PageServerLoad = async ({ cookies }) => {
 		.gte('tarikh_penilaian', `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`)
 		.lt('tarikh_penilaian', `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`)
 		.order('tarikh_penilaian', { ascending: false })
-		.limit(10);
+		.limit(50); // Get more to filter duplicates
+
+	// Remove duplicate comments/suggestions (same person, same date, same content)
+	const seenKeys = new Set<string>();
+	const recentComments: typeof rawComments = [];
+	
+	if (rawComments) {
+		for (const item of rawComments) {
+			// Create unique key based on person, date, and content
+			const key = `${item.nama_penilai}-${item.tarikh_penilaian}-${item.komen_penceramah || ''}-${item.cadangan_masjid || ''}`;
+			
+			if (!seenKeys.has(key)) {
+				seenKeys.add(key);
+				recentComments.push(item);
+				
+				// Stop after getting 10 unique items
+				if (recentComments.length >= 10) break;
+			}
+		}
+	}
 
 	// Get alert threshold from settings (default 2.0)
 	const { data: thresholdSetting } = await supabase
