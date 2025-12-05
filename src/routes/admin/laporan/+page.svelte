@@ -14,6 +14,7 @@
 	let showExportMenu = $state(false);
 	let showIndividualReport = $state(false);
 
+	let selectedPeriod = $state(data.filters.periodType || 'monthly');
 	let selectedMonth = $state(data.filters.month);
 	let selectedYear = $state(data.filters.year);
 	let selectedWeek = $state<number | null>(data.filters.week);
@@ -94,6 +95,10 @@
 		window.print();
 	}
 
+	const periodOptions = [
+		{ value: 'monthly', label: 'Bulanan' },
+		{ value: 'all', label: 'Semua Tempoh' }
+	];
 	const monthOptions = data.monthNames.map((name, i) => ({ value: i + 1, label: name }));
 	const yearOptions = [2024, 2025, 2026, 2027, 2028].map(y => ({ value: y, label: String(y) }));
 	const weekOptions = [
@@ -122,6 +127,12 @@
 	);
 
 	// Generate analytics
+	const periodLabel = $derived(
+		selectedPeriod === 'all' 
+			? 'Semua Tempoh' 
+			: `${data.monthNames[data.filters.month - 1]} ${data.filters.year}`
+	);
+
 	const analytics = $derived(generateAnalytics({
 		evaluations: data.evaluations,
 		lecturerScores: data.lecturerScores.map(s => ({
@@ -132,13 +143,16 @@
 				e.lecturer_id === data.lecturers.find(l => l.nama === s.lecturerName)?.id
 			).length) * 100
 		})),
-		period: `${data.monthNames[data.filters.month - 1]} ${data.filters.year}`
+		period: periodLabel
 	}));
 
 	function applyFilters() {
 		const params = new URLSearchParams();
-		params.set('month', String(selectedMonth));
-		params.set('year', String(selectedYear));
+		params.set('period', selectedPeriod);
+		if (selectedPeriod === 'monthly') {
+			params.set('month', String(selectedMonth));
+			params.set('year', String(selectedYear));
+		}
 		if (selectedWeek) params.set('week', String(selectedWeek));
 		if (selectedLecturer) params.set('lecturer', selectedLecturer);
 		if (selectedType) params.set('type', selectedType);
@@ -271,9 +285,12 @@
 
 	<!-- Filters -->
 	<div class="filter-bar">
-		<Select label="Bulan" options={monthOptions} bind:value={selectedMonth} />
-		<Select label="Tahun" options={yearOptions} bind:value={selectedYear} />
-		<Select label="Minggu" options={weekOptions} bind:value={selectedWeek} />
+		<Select label="Tempoh" options={periodOptions} bind:value={selectedPeriod} />
+		{#if selectedPeriod === 'monthly'}
+			<Select label="Bulan" options={monthOptions} bind:value={selectedMonth} />
+			<Select label="Tahun" options={yearOptions} bind:value={selectedYear} />
+			<Select label="Minggu" options={weekOptions} bind:value={selectedWeek} />
+		{/if}
 		<Select label="Penceramah" options={lecturerOptions} bind:value={selectedLecturer} />
 		<Select label="Jenis Kuliah" options={typeOptions} bind:value={selectedType} />
 		<div class="filter-action">
@@ -300,7 +317,7 @@
 					{/if}
 					<div class="lecturer-details">
 						<h2>{selectedLecturerInfo.nama}</h2>
-						<p class="report-period">Laporan Penilaian: {data.monthNames[data.filters.month - 1]} {data.filters.year}</p>
+						<p class="report-period">Laporan Penilaian: {periodLabel}</p>
 						<p class="response-count">{report.totalResponses} responden</p>
 					</div>
 				</div>

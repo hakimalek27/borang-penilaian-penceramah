@@ -13,6 +13,7 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
 	const supabase = createClient(cookies);
 	
 	const now = new Date();
+	const periodType = url.searchParams.get('period') || 'monthly'; // 'monthly' or 'all'
 	const month = parseInt(url.searchParams.get('month') || String(now.getMonth() + 1));
 	const year = parseInt(url.searchParams.get('year') || String(now.getFullYear()));
 	const week = url.searchParams.get('week') ? parseInt(url.searchParams.get('week')!) : null;
@@ -26,11 +27,17 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
 			*,
 			session:lecture_sessions(id, minggu, hari, jenis_kuliah),
 			lecturer:lecturers(id, nama)
-		`)
-		.gte('tarikh_penilaian', `${year}-${String(month).padStart(2, '0')}-01`)
-		.lt('tarikh_penilaian', month === 12 
-			? `${year + 1}-01-01` 
-			: `${year}-${String(month + 1).padStart(2, '0')}-01`);
+		`);
+
+	// Apply date filter based on period type
+	if (periodType === 'monthly') {
+		query = query
+			.gte('tarikh_penilaian', `${year}-${String(month).padStart(2, '0')}-01`)
+			.lt('tarikh_penilaian', month === 12 
+				? `${year + 1}-01-01` 
+				: `${year}-${String(month + 1).padStart(2, '0')}-01`);
+	}
+	// If periodType === 'all', no date filter - get all evaluations
 
 	if (lecturerId) {
 		query = query.eq('lecturer_id', lecturerId);
@@ -60,13 +67,17 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
 		.order('nama');
 
 	// Get lecturer sessions/schedule for individual report (include minggu)
-	const { data: lecturerSessions } = await supabase
+	let sessionsQuery = supabase
 		.from('lecture_sessions')
 		.select('lecturer_id, minggu, hari, jenis_kuliah')
-		.eq('bulan', month)
-		.eq('tahun', year)
-		.eq('is_active', true)
-		.order('minggu', { ascending: true });
+		.eq('is_active', true);
+	
+	// Only filter by month/year if not viewing all periods
+	if (periodType === 'monthly') {
+		sessionsQuery = sessionsQuery.eq('bulan', month).eq('tahun', year);
+	}
+	
+	const { data: lecturerSessions } = await sessionsQuery.order('minggu', { ascending: true });
 
 	// Create lecturer names map
 	const lecturerNames: Record<string, string> = {};
@@ -85,6 +96,7 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
 		lecturers: lecturers || [],
 		lecturerSessions: lecturerSessions || [],
 		filters: {
+			periodType,
 			month,
 			year,
 			week,
