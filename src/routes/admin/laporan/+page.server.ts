@@ -53,10 +53,10 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
 		filteredEvaluations = filteredEvaluations.filter(e => e.session?.jenis_kuliah === lectureType);
 	}
 
-	// Get all lecturers for filter dropdown
+	// Get all lecturers for filter dropdown (include gambar_url for individual report)
 	const { data: lecturers } = await supabase
 		.from('lecturers')
-		.select('id, nama')
+		.select('id, nama, gambar_url')
 		.order('nama');
 
 	// Create lecturer names map
