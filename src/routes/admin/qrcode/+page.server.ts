@@ -1,9 +1,10 @@
 import type { PageServerLoad } from './$types';
 import QRCode from 'qrcode';
+import { env } from '$env/dynamic/public';
 
 export const load: PageServerLoad = async ({ url }) => {
-	// Get the base URL from the request
-	const baseUrl = url.origin;
+	// Use PUBLIC_SITE_URL env variable, fallback to url.origin, then hardcoded domain
+	const baseUrl = env.PUBLIC_SITE_URL || url.origin || 'https://bpph.pages.dev';
 	const formUrl = baseUrl; // Root URL is the form
 	
 	// Generate QR code as data URL

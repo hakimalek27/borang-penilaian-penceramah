@@ -17,11 +17,14 @@ export const load: PageServerLoad = async ({ cookies }) => {
 	const currentYear = now.getFullYear();
 
 	// Get total evaluations for current month
+	const nextMonth = currentMonth === 12 ? 1 : currentMonth + 1;
+	const nextYear = currentMonth === 12 ? currentYear + 1 : currentYear;
+	
 	const { count: totalEvaluations } = await supabase
 		.from('evaluations')
 		.select('*', { count: 'exact', head: true })
 		.gte('tarikh_penilaian', `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`)
-		.lt('tarikh_penilaian', `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-01`);
+		.lt('tarikh_penilaian', `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`);
 
 	// Get total lecturers
 	const { count: totalLecturers } = await supabase
@@ -47,7 +50,7 @@ export const load: PageServerLoad = async ({ cookies }) => {
 			lecturer:lecturers(id, nama)
 		`)
 		.gte('tarikh_penilaian', `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`)
-		.lt('tarikh_penilaian', `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-01`);
+		.lt('tarikh_penilaian', `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`);
 
 	// Calculate average scores per lecturer
 	const lecturerScores: Record<string, { nama: string; total: number; count: number }> = {};
@@ -100,6 +103,7 @@ export const load: PageServerLoad = async ({ cookies }) => {
 		`)
 		.or('komen_penceramah.neq.,cadangan_masjid.neq.')
 		.gte('tarikh_penilaian', `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`)
+		.lt('tarikh_penilaian', `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`)
 		.order('tarikh_penilaian', { ascending: false })
 		.limit(10);
 
@@ -126,7 +130,8 @@ export const load: PageServerLoad = async ({ cookies }) => {
 			tarikh_penilaian,
 			lecturer:lecturers(id, nama)
 		`)
-		.gte('tarikh_penilaian', `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`);
+		.gte('tarikh_penilaian', `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`)
+		.lt('tarikh_penilaian', `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`);
 
 	// Transform evaluations for alert calculation
 	const transformedAlertEvaluations: EvaluationForAlert[] = (alertEvaluations || []).map(e => ({
