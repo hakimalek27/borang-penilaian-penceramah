@@ -1508,52 +1508,352 @@
 		}
 	}
 
+	/* Mobile Responsive Styles */
 	@media (max-width: 768px) {
+		.page {
+			padding: 0 0.5rem;
+		}
+
+		.page-header {
+			flex-direction: column;
+			align-items: stretch;
+			gap: 0.75rem;
+		}
+
+		.page-header h1 {
+			font-size: 1.25rem;
+			text-align: center;
+		}
+
+		.header-actions {
+			justify-content: center;
+			flex-wrap: wrap;
+		}
+
 		.filter-bar {
 			flex-direction: column;
+			padding: 0.75rem;
+			gap: 0.75rem;
 		}
 
 		.filter-bar :global(.select-group) {
 			width: 100%;
+			min-width: unset;
 		}
 
+		.filter-action {
+			flex-direction: column;
+			width: 100%;
+			gap: 0.5rem;
+		}
+
+		.filter-action :global(button) {
+			width: 100%;
+		}
+
+		/* Stats Row Mobile */
+		.stats-row {
+			grid-template-columns: repeat(2, 1fr);
+			gap: 0.75rem;
+		}
+
+		.stat-card {
+			padding: 1rem;
+		}
+
+		.stat-value {
+			font-size: 1.5rem;
+		}
+
+		.stat-label {
+			font-size: 0.75rem;
+		}
+
+		/* Charts Mobile */
 		.charts-grid {
 			grid-template-columns: 1fr;
+			gap: 1rem;
+		}
+
+		.chart-card {
+			padding: 1rem;
+		}
+
+		.chart-card h3 {
+			font-size: 0.9rem;
+		}
+
+		/* Insights Mobile */
+		.insights-section {
+			grid-template-columns: 1fr;
+			gap: 0.75rem;
+		}
+
+		.insights-card {
+			padding: 1rem;
+		}
+
+		.insights-card h3 {
+			font-size: 0.9rem;
+		}
+
+		.insights-card li {
+			font-size: 0.8rem;
+		}
+
+		/* Table Mobile */
+		.table-card {
+			padding: 0.75rem;
+			border-radius: 0.5rem;
+		}
+
+		.table-card h3 {
+			font-size: 0.9rem;
+		}
+
+		table {
+			font-size: 0.75rem;
+		}
+
+		th, td {
+			padding: 0.5rem 0.35rem;
+		}
+
+		/* Hide less important columns on mobile */
+		table th:nth-child(2),
+		table td:nth-child(2),
+		table th:nth-child(4),
+		table td:nth-child(4),
+		table th:nth-child(5),
+		table td:nth-child(5) {
+			display: none;
+		}
+
+		.action-col {
+			width: 60px;
+		}
+
+		/* Individual Report Mobile */
+		.individual-report {
+			padding: 1rem;
+			border-radius: 0.5rem;
+			margin-bottom: 1rem;
 		}
 
 		.report-header {
 			flex-direction: column;
-			gap: 1.5rem;
+			gap: 1rem;
 			align-items: center;
 			text-align: center;
+			padding-bottom: 1rem;
+			margin-bottom: 1rem;
 		}
 
 		.lecturer-profile {
 			flex-direction: column;
 			text-align: center;
+			gap: 0.75rem;
+		}
+
+		.lecturer-photo,
+		.lecturer-photo-placeholder {
+			width: 80px;
+			height: 80px;
+		}
+
+		.lecturer-details h2 {
+			font-size: 1.2rem;
+		}
+
+		.report-period,
+		.response-count {
+			font-size: 0.85rem;
+		}
+
+		.grade-badge {
+			width: 80px;
+			height: 80px;
+		}
+
+		.grade-letter {
+			font-size: 2rem;
+		}
+
+		.grade-percent {
+			font-size: 0.8rem;
+		}
+
+		/* Schedule Section Mobile */
+		.schedule-section {
+			padding: 0.75rem;
+			margin-bottom: 1rem;
+		}
+
+		.schedule-section h3 {
+			font-size: 0.9rem;
+		}
+
+		.schedule-tags {
+			gap: 0.4rem;
+		}
+
+		.schedule-tag {
+			padding: 0.4rem 0.75rem;
+			font-size: 0.75rem;
+		}
+
+		/* Scores Section Mobile */
+		.scores-section {
+			margin-bottom: 1rem;
+		}
+
+		.scores-section h3 {
+			font-size: 0.95rem;
+		}
+
+		.score-grid {
+			gap: 0.75rem;
 		}
 
 		.score-item {
+			padding: 0.75rem;
 			grid-template-columns: 1fr;
-			gap: 0.5rem;
+			gap: 0.4rem;
+		}
+
+		.score-item .score-label {
+			font-size: 0.8rem;
 		}
 
 		.score-bar-container {
+			height: 20px;
 			order: 2;
 		}
 
 		.score-value {
 			order: 3;
 			text-align: left;
+			font-size: 0.9rem;
+		}
+
+		.total-score {
+			padding: 0.75rem;
+			font-size: 0.95rem;
+			margin-top: 1rem;
+		}
+
+		/* Recommendation Section Mobile */
+		.recommendation-section {
+			margin-bottom: 1rem;
+		}
+
+		.recommendation-section h3 {
+			font-size: 0.95rem;
 		}
 
 		.rec-item {
 			grid-template-columns: 1fr;
-			gap: 0.5rem;
+			gap: 0.4rem;
+		}
+
+		.rec-label {
+			font-size: 0.85rem;
+		}
+
+		.rec-bar-container {
+			height: 16px;
 		}
 
 		.rec-value {
 			text-align: left;
+			font-size: 0.85rem;
+		}
+
+		/* Grade Legend Mobile */
+		.grade-legend {
+			padding: 0.75rem;
+			margin-bottom: 1rem;
+		}
+
+		.grade-legend h4 {
+			font-size: 0.8rem;
+		}
+
+		.legend-items {
+			gap: 0.35rem;
+		}
+
+		.legend-item {
+			padding: 0.2rem 0.5rem;
+			font-size: 0.7rem;
+		}
+
+		/* Export Menu Mobile */
+		.export-dropdown {
+			position: static;
+		}
+
+		.export-menu {
+			position: fixed;
+			bottom: 0;
+			left: 0;
+			right: 0;
+			top: auto;
+			border-radius: 1rem 1rem 0 0;
+			padding-bottom: env(safe-area-inset-bottom, 1rem);
+		}
+
+		.export-menu button {
+			padding: 1rem;
+			font-size: 1rem;
+		}
+
+		/* Delete Confirm Mobile */
+		.delete-confirm {
+			flex-direction: column;
+			gap: 0.25rem;
+		}
+
+		.btn-confirm-delete,
+		.btn-cancel {
+			padding: 0.35rem 0.5rem;
+			font-size: 0.7rem;
+		}
+	}
+
+	/* Extra small screens */
+	@media (max-width: 480px) {
+		.stats-row {
+			grid-template-columns: 1fr 1fr;
+		}
+
+		.stat-value {
+			font-size: 1.25rem;
+		}
+
+		/* Show only essential table columns */
+		table th:nth-child(3),
+		table td:nth-child(3),
+		table th:nth-child(6),
+		table td:nth-child(6),
+		table th:nth-child(7),
+		table td:nth-child(7) {
+			display: none;
+		}
+
+		.lecturer-photo,
+		.lecturer-photo-placeholder {
+			width: 60px;
+			height: 60px;
+		}
+
+		.grade-badge {
+			width: 60px;
+			height: 60px;
+		}
+
+		.grade-letter {
+			font-size: 1.5rem;
 		}
 	}
 </style>

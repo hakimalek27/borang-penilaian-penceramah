@@ -1,13 +1,41 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import { Button } from '$lib/components/ui';
+	import { browser } from '$app/environment';
 
 	let { data }: { data: PageData } = $props();
+	let isGenerating = $state(false);
+	let clientQrCode = $state('');
+
+	// Generate QR code on client-side as fallback
+	async function generateClientQR() {
+		if (!browser) return;
+		isGenerating = true;
+		try {
+			const QRCode = await import('qrcode');
+			clientQrCode = await QRCode.toDataURL(data.formUrl, {
+				width: 400,
+				margin: 2,
+				errorCorrectionLevel: 'M',
+				color: {
+					dark: '#1a5f2a',
+					light: '#ffffff'
+				}
+			});
+		} catch (error) {
+			console.error('Client QR generation failed:', error);
+		}
+		isGenerating = false;
+	}
+
+	// Use server QR or client QR
+	const qrCodeUrl = $derived(data.qrCodeDataUrl || clientQrCode);
 
 	function downloadQRCode() {
+		if (!qrCodeUrl) return;
 		const link = document.createElement('a');
 		link.download = 'qrcode-borang-penilaian.png';
-		link.href = data.qrCodeDataUrl;
+		link.href = qrCodeUrl;
 		link.click();
 	}
 
@@ -29,10 +57,21 @@
 	<div class="qr-container">
 		<div class="qr-card">
 			<div class="qr-image">
-				{#if data.qrCodeDataUrl}
-					<img src={data.qrCodeDataUrl} alt="QR Code Borang Penilaian" />
+				{#if qrCodeUrl}
+					<img src={qrCodeUrl} alt="QR Code Borang Penilaian" />
+				{:else if isGenerating}
+					<div class="qr-loading">
+						<span class="spinner"></span>
+						<p>Menjana QR code...</p>
+					</div>
 				{:else}
-					<p>Ralat menjana QR code</p>
+					<div class="qr-error">
+						<p>⚠️ Ralat menjana QR code</p>
+						{#if data.errorMessage}
+							<p class="error-detail">{data.errorMessage}</p>
+						{/if}
+						<Button onclick={generateClientQR}>🔄 Cuba Semula</Button>
+					</div>
 				{/if}
 			</div>
 			
@@ -107,6 +146,44 @@
 		border-radius: 1rem;
 		padding: 1rem;
 		background: white;
+	}
+
+	.qr-loading {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 1rem;
+		padding: 3rem;
+		color: #666;
+	}
+
+	.spinner {
+		width: 40px;
+		height: 40px;
+		border: 4px solid #e0e0e0;
+		border-top-color: #1a5f2a;
+		border-radius: 50%;
+		animation: spin 1s linear infinite;
+	}
+
+	@keyframes spin {
+		to { transform: rotate(360deg); }
+	}
+
+	.qr-error {
+		padding: 2rem;
+		text-align: center;
+		color: #dc3545;
+	}
+
+	.qr-error p {
+		margin-bottom: 0.5rem;
+	}
+
+	.error-detail {
+		font-size: 0.85rem;
+		color: #999;
+		margin-bottom: 1rem !important;
 	}
 
 	.qr-info h2 {
