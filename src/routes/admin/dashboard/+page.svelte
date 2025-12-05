@@ -112,24 +112,22 @@
 							<span class="comment-author">{comment.nama_penilai}</span>
 							<span class="comment-date">{comment.tarikh_penilaian}</span>
 						</div>
-						{#if comment.lecturer}
-							<div class="comment-lecturer">Penceramah: {comment.lecturer.nama}</div>
-						{/if}
 						{#if comment.komen_penceramah}
 							<div class="comment-item">
-								<strong>Komen kepada Penceramah:</strong>
+								<strong>💬 Komen:</strong>
 								<p>{comment.komen_penceramah}</p>
 							</div>
 						{/if}
 						{#if comment.cadangan_masjid}
 							<div class="comment-item suggestion">
-								<strong>Cadangan kepada Masjid:</strong>
+								<strong>📝 Cadangan:</strong>
 								<p>{comment.cadangan_masjid}</p>
 							</div>
 						{/if}
 					</div>
 				{/each}
 			</div>
+			<a href="/admin/komen" class="view-all-link">Lihat semua komen & cadangan →</a>
 		{:else}
 			<p class="no-data">Tiada komen atau cadangan untuk bulan ini</p>
 		{/if}
@@ -389,12 +387,6 @@
 		color: #999;
 	}
 
-	.comment-lecturer {
-		font-size: 0.85rem;
-		color: #666;
-		margin-bottom: 0.5rem;
-	}
-
 	.comment-item {
 		margin-top: 0.5rem;
 	}
@@ -415,5 +407,21 @@
 		padding: 0.5rem;
 		border-radius: 0.25rem;
 		margin-top: 0.75rem;
+	}
+
+	.view-all-link {
+		display: block;
+		text-align: center;
+		margin-top: 1rem;
+		padding-top: 1rem;
+		border-top: 1px solid #eee;
+		color: #1a5f2a;
+		text-decoration: none;
+		font-size: 0.9rem;
+		font-weight: 500;
+	}
+
+	.view-all-link:hover {
+		text-decoration: underline;
 	}
 </style>

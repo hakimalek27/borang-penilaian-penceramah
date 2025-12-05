@@ -90,7 +90,7 @@ export const load: PageServerLoad = async ({ cookies }) => {
 		}
 	}
 
-	// Get recent comments and suggestions
+	// Get recent comments and suggestions (general feedback, not lecturer-specific)
 	const { data: recentComments } = await supabase
 		.from('evaluations')
 		.select(`
@@ -98,8 +98,7 @@ export const load: PageServerLoad = async ({ cookies }) => {
 			nama_penilai,
 			tarikh_penilaian,
 			komen_penceramah,
-			cadangan_masjid,
-			lecturer:lecturers(nama)
+			cadangan_masjid
 		`)
 		.or('komen_penceramah.neq.,cadangan_masjid.neq.')
 		.gte('tarikh_penilaian', `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`)
