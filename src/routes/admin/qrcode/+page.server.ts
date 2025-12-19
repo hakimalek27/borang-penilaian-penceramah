@@ -1,12 +1,13 @@
 import type { PageServerLoad } from './$types';
+import { env } from '$env/dynamic/public';
 import QRCode from 'qrcode';
 
-// Hardcoded production URL - this ensures QR code always points to correct domain
-const PRODUCTION_URL = 'https://bpph.pages.dev';
+// Default fallback URL if env variable not set
+const DEFAULT_URL = 'https://bpp.mamkl.my';
 
-export const load: PageServerLoad = async () => {
-	// Always use production URL for QR code to ensure consistency
-	const formUrl = PRODUCTION_URL;
+export const load: PageServerLoad = async ({ url }) => {
+	// Priority: 1. Environment variable, 2. Auto-detect from request, 3. Default fallback
+	const formUrl = env.PUBLIC_FORM_URL || url.origin || DEFAULT_URL;
 	
 	// Generate QR code as data URL
 	let qrCodeDataUrl = '';
