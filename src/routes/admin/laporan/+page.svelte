@@ -386,6 +386,7 @@
 				</div>
 			</div>
 
+			{#if data.showRecommendationSection}
 			<div class="recommendation-section">
 				<h3>Cadangan Diteruskan</h3>
 				<div class="recommendation-bars">
@@ -405,6 +406,7 @@
 					</div>
 				</div>
 			</div>
+			{/if}
 
 			<div class="grade-legend">
 				<h4>Skala Gred</h4>
@@ -432,6 +434,7 @@
 			<div class="stat-value">{analytics.summary.averageScore.toFixed(2)}</div>
 			<div class="stat-label">Purata Skor</div>
 		</div>
+		{#if data.showRecommendationSection}
 		<div class="stat-card highlight-green">
 			<div class="stat-value">{data.recommendationStats.ya}</div>
 			<div class="stat-label">Cadangan Ya ({analytics.summary.recommendationYesPercent.toFixed(0)}%)</div>
@@ -440,6 +443,7 @@
 			<div class="stat-value">{data.recommendationStats.tidak}</div>
 			<div class="stat-label">Cadangan Tidak</div>
 		</div>
+		{/if}
 	</div>
 
 	<!-- Insights Section -->
@@ -502,6 +506,7 @@
 			{/if}
 		</div>
 
+		{#if data.showRecommendationSection}
 		<div class="chart-card">
 			<h3>Cadangan Diteruskan</h3>
 			{#if PieChart && (pieData[0] > 0 || pieData[1] > 0)}
@@ -512,6 +517,7 @@
 				<p class="loading">Memuatkan carta...</p>
 			{/if}
 		</div>
+		{/if}
 	</div>
 
 	<!-- Lecturer Scores Table -->
@@ -582,7 +588,9 @@
 							<th>Q2</th>
 							<th>Q3</th>
 							<th>Q4</th>
+							{#if data.showRecommendationSection}
 							<th>Cadangan</th>
+							{/if}
 							<th class="action-col">Tindakan</th>
 						</tr>
 					</thead>
@@ -596,9 +604,11 @@
 								<td>{evaluation.q2_ilmu}</td>
 								<td>{evaluation.q3_penyampaian}</td>
 								<td>{evaluation.q4_masa}</td>
-								<td class={evaluation.cadangan_teruskan ? 'yes' : 'no'}>
-									{evaluation.cadangan_teruskan ? 'Ya' : 'Tidak'}
+								{#if data.showRecommendationSection}
+								<td class={evaluation.cadangan_teruskan ? 'yes' : evaluation.cadangan_teruskan === false ? 'no' : ''}>
+									{evaluation.cadangan_teruskan === true ? 'Ya' : evaluation.cadangan_teruskan === false ? 'Tidak' : '-'}
 								</td>
+								{/if}
 								<td class="action-col">
 									{#if deleteConfirmId === evaluation.id}
 										<div class="delete-confirm">

@@ -20,6 +20,15 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
 	const lecturerId = url.searchParams.get('lecturer') || null;
 	const lectureType = url.searchParams.get('type') as 'Subuh' | 'Maghrib' | null;
 
+	// Get recommendation section setting
+	const { data: settings } = await supabase
+		.from('settings')
+		.select('value')
+		.eq('key', 'show_recommendation_section')
+		.single();
+	
+	const showRecommendationSection = settings?.value !== false;
+
 	// Build query for evaluations
 	let query = supabase
 		.from('evaluations')
@@ -95,6 +104,7 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
 		recommendationStats,
 		lecturers: lecturers || [],
 		lecturerSessions: lecturerSessions || [],
+		showRecommendationSection,
 		filters: {
 			periodType,
 			month,
