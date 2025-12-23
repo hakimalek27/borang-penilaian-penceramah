@@ -7,6 +7,7 @@
 		isExpanded: boolean;
 		ratings?: EvaluationRatings;
 		recommendation?: boolean | null;
+		showRecommendation?: boolean;
 		onToggle: () => void;
 		onRatingChange: (question: keyof EvaluationRatings, value: number) => void;
 		onRecommendationChange: (value: boolean) => void;
@@ -17,6 +18,7 @@
 		isExpanded, 
 		ratings,
 		recommendation,
+		showRecommendation = true,
 		onToggle, 
 		onRatingChange,
 		onRecommendationChange
@@ -60,6 +62,7 @@
 			<EvaluationForm 
 				{ratings}
 				{recommendation}
+				{showRecommendation}
 				{onRatingChange}
 				{onRecommendationChange}
 			/>

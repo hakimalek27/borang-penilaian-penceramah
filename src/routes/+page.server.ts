@@ -55,6 +55,15 @@ export const load: PageServerLoad = async ({ cookies }) => {
 		console.error('Error fetching sessions:', sessionsError);
 	}
 
+	// Fetch form settings
+	const { data: settings } = await supabase
+		.from('settings')
+		.select('key, value')
+		.eq('key', 'show_recommendation_section')
+		.single();
+
+	const showRecommendationSection = settings?.value !== false;
+
 	// Group sessions by week and sort properly
 	const sessionsByWeek: Record<number, (LectureSession & { lecturer: Lecturer | null })[]> = {};
 	
@@ -80,6 +89,7 @@ export const load: PageServerLoad = async ({ cookies }) => {
 		currentMonth,
 		currentYear,
 		today: now.toISOString().split('T')[0],
-		session: null
+		session: null,
+		showRecommendationSection
 	};
 };

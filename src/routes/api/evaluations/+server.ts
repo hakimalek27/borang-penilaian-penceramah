@@ -19,9 +19,21 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 			);
 		}
 
+		const supabase = createClient(cookies);
+
+		// Check if recommendation section is enabled
+		const { data: settings } = await supabase
+			.from('settings')
+			.select('value')
+			.eq('key', 'show_recommendation_section')
+			.single();
+		
+		const showRecommendation = settings?.value !== false;
+
 		// Filter only complete evaluations
+		// If recommendation is hidden, don't require it
 		const completeEvaluations = evaluations.filter(
-			(e) => isRatingsComplete(e.ratings) && e.recommendation !== null
+			(e) => isRatingsComplete(e.ratings) && (showRecommendation ? e.recommendation !== null : true)
 		);
 
 		if (completeEvaluations.length === 0) {
@@ -30,8 +42,6 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 				{ status: 400 }
 			);
 		}
-
-		const supabase = createClient(cookies);
 
 		// Get lecturer names for email notifications
 		const lecturerIds = [...new Set(completeEvaluations.map(e => e.lecturerId))];
@@ -54,7 +64,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 			q2_ilmu: evaluation.ratings.q2_ilmu,
 			q3_penyampaian: evaluation.ratings.q3_penyampaian,
 			q4_masa: evaluation.ratings.q4_masa,
-			cadangan_teruskan: evaluation.recommendation,
+			cadangan_teruskan: showRecommendation ? evaluation.recommendation : null,
 			komen_penceramah: komenPenceramah ? sanitizeString(komenPenceramah) : null,
 			cadangan_masjid: cadanganMasjid ? sanitizeString(cadanganMasjid) : null
 		}));
