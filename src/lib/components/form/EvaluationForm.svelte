@@ -5,6 +5,7 @@
 	interface Props {
 		ratings?: EvaluationRatings;
 		recommendation?: boolean | null;
+		showRecommendation?: boolean;
 		onRatingChange: (question: keyof EvaluationRatings, value: number) => void;
 		onRecommendationChange: (value: boolean) => void;
 	}
@@ -12,6 +13,7 @@
 	let { 
 		ratings = { q1_tajuk: null, q2_ilmu: null, q3_penyampaian: null, q4_masa: null },
 		recommendation = null,
+		showRecommendation = true,
 		onRatingChange,
 		onRecommendationChange
 	}: Props = $props();
@@ -103,23 +105,25 @@
 		</div>
 	{/each}
 
-	<div class="recommendation-section">
-		<p class="question-text">Cadangan untuk diteruskan?</p>
-		<div class="recommendation-options">
-			{#each recommendationOptions as option}
-				<label class="recommendation-option">
-					<input 
-						type="radio" 
-						name="recommendation"
-						value={option.value}
-						checked={localRecommendation === option.value}
-						onchange={() => localRecommendation = option.value}
-					/>
-					<span class="recommendation-label">{option.label}</span>
-				</label>
-			{/each}
+	{#if showRecommendation}
+		<div class="recommendation-section">
+			<p class="question-text">Cadangan untuk diteruskan?</p>
+			<div class="recommendation-options">
+				{#each recommendationOptions as option}
+					<label class="recommendation-option">
+						<input 
+							type="radio" 
+							name="recommendation"
+							value={option.value}
+							checked={localRecommendation === option.value}
+							onchange={() => localRecommendation = option.value}
+						/>
+						<span class="recommendation-label">{option.label}</span>
+					</label>
+				{/each}
+			</div>
 		</div>
-	</div>
+	{/if}
 </div>
 
 <style>

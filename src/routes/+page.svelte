@@ -358,6 +358,7 @@
 									isExpanded={expandedLecturers.has(session.id)}
 									ratings={lecturerRatings[session.id]?.ratings}
 									recommendation={lecturerRatings[session.id]?.recommendation}
+									showRecommendation={data.showRecommendationSection}
 									onToggle={() => toggleLecturer(session.id)}
 									onRatingChange={(q, v) => updateRating(session.id, q, v)}
 									onRecommendationChange={(v) => updateRecommendation(session.id, v)}
