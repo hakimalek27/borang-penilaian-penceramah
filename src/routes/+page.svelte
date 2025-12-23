@@ -179,20 +179,21 @@
 			sessionId: string;
 			lecturerId: string;
 			ratings: EvaluationRatings;
-			recommendation: boolean;
+			recommendation: boolean | null;
 		}> = [];
 
-		for (const [sessionId, data] of Object.entries(lecturerRatings)) {
-			if (isRatingsComplete(data.ratings) && data.recommendation !== null) {
-				const session = Object.values($state.snapshot(data)).length > 0 
+		for (const [sessionId, ratingData] of Object.entries(lecturerRatings)) {
+			// Only require ratings to be complete, recommendation is optional
+			if (isRatingsComplete(ratingData.ratings)) {
+				const session = Object.values($state.snapshot(ratingData)).length > 0 
 					? findSession(sessionId) 
 					: null;
 				if (session?.lecturer_id) {
 					evaluations.push({
 						sessionId,
 						lecturerId: session.lecturer_id,
-						ratings: data.ratings as EvaluationRatings,
-						recommendation: data.recommendation
+						ratings: ratingData.ratings as EvaluationRatings,
+						recommendation: ratingData.recommendation // Can be null
 					});
 				}
 			}

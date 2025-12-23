@@ -21,19 +21,10 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 
 		const supabase = createClient(cookies);
 
-		// Check if recommendation section is enabled
-		const { data: settings } = await supabase
-			.from('settings')
-			.select('value')
-			.eq('key', 'show_recommendation_section')
-			.single();
-		
-		const showRecommendation = settings?.value !== false;
-
 		// Filter only complete evaluations
-		// If recommendation is hidden, don't require it
+		// Recommendation is always optional - only ratings are required
 		const completeEvaluations = evaluations.filter(
-			(e) => isRatingsComplete(e.ratings) && (showRecommendation ? e.recommendation !== null : true)
+			(e) => isRatingsComplete(e.ratings)
 		);
 
 		if (completeEvaluations.length === 0) {
@@ -53,6 +44,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		const lecturerMap = new Map(lecturers?.map(l => [l.id, l.nama]) || []);
 
 		// Prepare evaluation records
+		// Recommendation is optional - save as null if not provided
 		const records = completeEvaluations.map((evaluation) => ({
 			session_id: evaluation.sessionId,
 			lecturer_id: evaluation.lecturerId,
@@ -64,7 +56,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 			q2_ilmu: evaluation.ratings.q2_ilmu,
 			q3_penyampaian: evaluation.ratings.q3_penyampaian,
 			q4_masa: evaluation.ratings.q4_masa,
-			cadangan_teruskan: showRecommendation ? evaluation.recommendation : null,
+			cadangan_teruskan: evaluation.recommendation, // Can be null
 			komen_penceramah: komenPenceramah ? sanitizeString(komenPenceramah) : null,
 			cadangan_masjid: cadanganMasjid ? sanitizeString(cadanganMasjid) : null
 		}));
