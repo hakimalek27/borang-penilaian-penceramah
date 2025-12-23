@@ -23,8 +23,9 @@ export const load: PageServerLoad = async ({ cookies }) => {
 export const actions: Actions = {
 	updateEmailSettings: async ({ request, cookies }) => {
 		const formData = await request.formData();
-		const enabled = formData.get('enabled') === 'true';
-		const emailsRaw = formData.get('emails') as string;
+		// Checkbox sends 'true' when checked, nothing when unchecked
+		const enabled = formData.has('enabled');
+		const emailsRaw = formData.get('emails') as string || '';
 		
 		// Parse and validate emails
 		const emails = emailsRaw
@@ -78,7 +79,8 @@ export const actions: Actions = {
 
 	updateFormSettings: async ({ request, cookies }) => {
 		const formData = await request.formData();
-		const showRecommendation = formData.get('showRecommendation') === 'true';
+		// Checkbox sends 'true' when checked, nothing when unchecked
+		const showRecommendation = formData.has('showRecommendation');
 
 		const supabase = createClient(cookies);
 

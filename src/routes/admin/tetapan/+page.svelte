@@ -46,10 +46,12 @@
 					<label class="toggle-label">
 						<input 
 							type="checkbox" 
-							bind:checked={emailEnabled}
-							class="toggle-input"
+							name="enabled"
+							value="true"
+							checked={emailEnabled}
+							onchange={(e) => emailEnabled = e.currentTarget.checked}
+							class="toggle-checkbox"
 						/>
-						<input type="hidden" name="enabled" value={emailEnabled ? 'true' : 'false'} />
 						<span class="toggle-switch"></span>
 						<span class="toggle-text">
 							{emailEnabled ? 'Notifikasi Aktif' : 'Notifikasi Tidak Aktif'}
@@ -107,7 +109,7 @@
 					<div class="preview-bar">
 						<div 
 							class="preview-marker" 
-							style="left: {((parseFloat(alertThreshold) - 1) / 3) * 100}%"
+							style="left: {((parseFloat(alertThreshold || '2') - 1) / 3) * 100}%"
 						></div>
 						<div class="preview-labels">
 							<span>1.0</span>
@@ -139,16 +141,18 @@
 					<label class="toggle-label">
 						<input 
 							type="checkbox" 
-							bind:checked={showRecommendation}
-							class="toggle-input"
+							name="showRecommendation"
+							value="true"
+							checked={showRecommendation}
+							onchange={(e) => showRecommendation = e.currentTarget.checked}
+							class="toggle-checkbox"
 						/>
-						<input type="hidden" name="showRecommendation" value={showRecommendation ? 'true' : 'false'} />
 						<span class="toggle-switch"></span>
 						<span class="toggle-text">
 							{showRecommendation ? 'Papar "Cadangan untuk diteruskan?"' : 'Sembunyikan "Cadangan untuk diteruskan?"'}
 						</span>
 					</label>
-					<p class="hint" style="margin-top: 0.5rem;">
+					<p class="hint" style="margin-top: 0.75rem;">
 						Jika diaktifkan, jemaah akan diminta untuk menjawab soalan "Cadangan untuk diteruskan?" dalam borang penilaian.
 					</p>
 				</div>
@@ -228,7 +232,7 @@
 		margin-bottom: 1.25rem;
 	}
 
-	.form-group label {
+	.form-group > label:not(.toggle-label) {
 		display: block;
 		font-weight: 500;
 		color: #333;
@@ -246,44 +250,55 @@
 		align-items: center;
 		gap: 0.75rem;
 		cursor: pointer;
+		user-select: none;
 	}
 
-	.toggle-input {
-		display: none;
+	.toggle-checkbox {
+		position: absolute;
+		opacity: 0;
+		width: 0;
+		height: 0;
 	}
 
 	.toggle-switch {
-		width: 48px;
-		height: 26px;
+		width: 52px;
+		height: 28px;
 		background: #ccc;
-		border-radius: 13px;
+		border-radius: 14px;
 		position: relative;
-		transition: background 0.2s;
+		transition: background 0.3s ease;
+		flex-shrink: 0;
 	}
 
 	.toggle-switch::after {
 		content: '';
 		position: absolute;
-		width: 22px;
-		height: 22px;
+		width: 24px;
+		height: 24px;
 		background: white;
 		border-radius: 50%;
 		top: 2px;
 		left: 2px;
-		transition: transform 0.2s;
+		transition: transform 0.3s ease;
+		box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 	}
 
-	.toggle-input:checked + .toggle-switch {
+	.toggle-checkbox:checked + .toggle-switch {
 		background: #1a5f2a;
 	}
 
-	.toggle-input:checked + .toggle-switch::after {
-		transform: translateX(22px);
+	.toggle-checkbox:checked + .toggle-switch::after {
+		transform: translateX(24px);
+	}
+
+	.toggle-checkbox:focus + .toggle-switch {
+		box-shadow: 0 0 0 3px rgba(26, 95, 42, 0.2);
 	}
 
 	.toggle-text {
 		font-weight: 500;
 		color: #333;
+		font-size: 0.95rem;
 	}
 
 	.threshold-input {
