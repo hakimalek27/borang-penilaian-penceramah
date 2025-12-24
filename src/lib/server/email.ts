@@ -8,7 +8,6 @@ export interface EvaluationSummary {
 	lecturerName: string;
 	date: string;
 	overallRating: number;
-	recommendation: boolean;
 }
 
 export interface EmailConfig {
@@ -69,7 +68,7 @@ export function formatEmailContent(summary: EvaluationSummary): {
 	body: string;
 	html: string;
 } {
-	const { evaluatorName, lecturerName, date, overallRating, recommendation } = summary;
+	const { evaluatorName, lecturerName, date, overallRating } = summary;
 	
 	const subject = `Penilaian Baru: ${lecturerName} - ${date}`;
 	
@@ -81,7 +80,6 @@ Maklumat Penilaian:
 - Penceramah: ${lecturerName}
 - Tarikh: ${date}
 - Purata Skor: ${overallRating.toFixed(2)}/4.00
-- Cadangan Diteruskan: ${recommendation ? 'Ya' : 'Tidak'}
 
 ---
 Sistem Penilaian Kuliah
@@ -102,9 +100,6 @@ Masjid Al-Muttaqin Wangsa Melawati
 		.label { font-weight: bold; width: 150px; color: #555; }
 		.value { flex: 1; }
 		.score { font-size: 1.2em; color: #1a5f2a; font-weight: bold; }
-		.recommendation { padding: 5px 10px; border-radius: 4px; display: inline-block; }
-		.recommendation.yes { background: #d4edda; color: #155724; }
-		.recommendation.no { background: #f8d7da; color: #721c24; }
 		.footer { text-align: center; padding: 15px; color: #666; font-size: 0.9em; }
 	</style>
 </head>
@@ -129,14 +124,6 @@ Masjid Al-Muttaqin Wangsa Melawati
 			<div class="info-row">
 				<span class="label">Purata Skor:</span>
 				<span class="value score">${overallRating.toFixed(2)}/4.00</span>
-			</div>
-			<div class="info-row">
-				<span class="label">Cadangan Diteruskan:</span>
-				<span class="value">
-					<span class="recommendation ${recommendation ? 'yes' : 'no'}">
-						${recommendation ? 'Ya' : 'Tidak'}
-					</span>
-				</span>
 			</div>
 		</div>
 		<div class="footer">
@@ -194,9 +181,6 @@ export function validateEvaluationSummary(summary: EvaluationSummary): {
 	}
 	if (typeof summary.overallRating !== 'number' || summary.overallRating < 1 || summary.overallRating > 4) {
 		errors.push('overallRating must be a number between 1 and 4');
-	}
-	if (typeof summary.recommendation !== 'boolean') {
-		errors.push('recommendation must be a boolean');
 	}
 
 	return { valid: errors.length === 0, errors };

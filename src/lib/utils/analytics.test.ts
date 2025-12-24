@@ -13,8 +13,7 @@ const lecturerSummaryArb: fc.Arbitrary<LecturerSummary> = fc.record({
 	avgQ3: fc.float({ min: 1, max: 4 }),
 	avgQ4: fc.float({ min: 1, max: 4 }),
 	avgOverall: fc.float({ min: 1, max: 4 }),
-	totalEvaluations: fc.integer({ min: 1, max: 100 }),
-	recommendationYesPercent: fc.float({ min: 0, max: 100 })
+	totalEvaluations: fc.integer({ min: 1, max: 100 })
 });
 
 const evaluationArb = fc.record({
@@ -22,7 +21,6 @@ const evaluationArb = fc.record({
 	q2_ilmu: scoreArb,
 	q3_penyampaian: scoreArb,
 	q4_masa: scoreArb,
-	cadangan_teruskan: fc.boolean(),
 	lecturer_id: fc.uuid()
 });
 
@@ -65,9 +63,9 @@ describe('Analytics Utils', () => {
 
 		it('should identify top performer correctly', () => {
 			const lecturerScores: LecturerSummary[] = [
-				{ lecturerName: 'A', avgQ1: 3.5, avgQ2: 3.5, avgQ3: 3.5, avgQ4: 3.5, avgOverall: 3.5, totalEvaluations: 10, recommendationYesPercent: 90 },
-				{ lecturerName: 'B', avgQ1: 2.5, avgQ2: 2.5, avgQ3: 2.5, avgQ4: 2.5, avgOverall: 2.5, totalEvaluations: 10, recommendationYesPercent: 70 },
-				{ lecturerName: 'C', avgQ1: 3.8, avgQ2: 3.8, avgQ3: 3.8, avgQ4: 3.8, avgOverall: 3.8, totalEvaluations: 10, recommendationYesPercent: 95 }
+				{ lecturerName: 'A', avgQ1: 3.5, avgQ2: 3.5, avgQ3: 3.5, avgQ4: 3.5, avgOverall: 3.5, totalEvaluations: 10 },
+				{ lecturerName: 'B', avgQ1: 2.5, avgQ2: 2.5, avgQ3: 2.5, avgQ4: 2.5, avgOverall: 2.5, totalEvaluations: 10 },
+				{ lecturerName: 'C', avgQ1: 3.8, avgQ2: 3.8, avgQ3: 3.8, avgQ4: 3.8, avgOverall: 3.8, totalEvaluations: 10 }
 			];
 
 			const result = generateAnalytics({
@@ -82,8 +80,8 @@ describe('Analytics Utils', () => {
 
 		it('should identify needs attention correctly', () => {
 			const lecturerScores: LecturerSummary[] = [
-				{ lecturerName: 'A', avgQ1: 3.5, avgQ2: 3.5, avgQ3: 3.5, avgQ4: 3.5, avgOverall: 3.5, totalEvaluations: 10, recommendationYesPercent: 90 },
-				{ lecturerName: 'B', avgQ1: 2.0, avgQ2: 2.0, avgQ3: 2.0, avgQ4: 2.0, avgOverall: 2.0, totalEvaluations: 10, recommendationYesPercent: 40 }
+				{ lecturerName: 'A', avgQ1: 3.5, avgQ2: 3.5, avgQ3: 3.5, avgQ4: 3.5, avgOverall: 3.5, totalEvaluations: 10 },
+				{ lecturerName: 'B', avgQ1: 2.0, avgQ2: 2.0, avgQ3: 2.0, avgQ4: 2.0, avgOverall: 2.0, totalEvaluations: 10 }
 			];
 
 			const result = generateAnalytics({
@@ -98,9 +96,9 @@ describe('Analytics Utils', () => {
 
 		it('should assess risk levels correctly', () => {
 			const lecturerScores: LecturerSummary[] = [
-				{ lecturerName: 'High Risk', avgQ1: 1.5, avgQ2: 1.5, avgQ3: 1.5, avgQ4: 1.5, avgOverall: 1.5, totalEvaluations: 2, recommendationYesPercent: 30 },
-				{ lecturerName: 'Medium Risk', avgQ1: 2.5, avgQ2: 2.5, avgQ3: 2.5, avgQ4: 2.5, avgOverall: 2.5, totalEvaluations: 5, recommendationYesPercent: 60 },
-				{ lecturerName: 'Low Risk', avgQ1: 3.5, avgQ2: 3.5, avgQ3: 3.5, avgQ4: 3.5, avgOverall: 3.5, totalEvaluations: 20, recommendationYesPercent: 95 }
+				{ lecturerName: 'High Risk', avgQ1: 1.5, avgQ2: 1.5, avgQ3: 1.5, avgQ4: 1.5, avgOverall: 1.5, totalEvaluations: 2 },
+				{ lecturerName: 'Medium Risk', avgQ1: 2.5, avgQ2: 2.5, avgQ3: 2.5, avgQ4: 2.5, avgOverall: 2.5, totalEvaluations: 5 },
+				{ lecturerName: 'Low Risk', avgQ1: 3.5, avgQ2: 3.5, avgQ3: 3.5, avgQ4: 3.5, avgOverall: 3.5, totalEvaluations: 20 }
 			];
 
 			const result = generateAnalytics({

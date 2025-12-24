@@ -81,7 +81,6 @@ export interface Evaluation {
 	q2_ilmu: number;
 	q3_penyampaian: number;
 	q4_masa: number;
-	cadangan_teruskan: boolean | null;
 	komen_penceramah: string | null;
 	cadangan_masjid: string | null;
 	created_at: string;
@@ -102,7 +101,6 @@ export interface EvaluationSubmission {
 		sessionId: string;
 		lecturerId: string;
 		ratings: EvaluationRatings;
-		recommendation: boolean;
 	}[];
 	komenPenceramah?: string;
 	cadanganMasjid?: string;

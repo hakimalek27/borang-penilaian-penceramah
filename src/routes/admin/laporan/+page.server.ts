@@ -1,7 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { createClient } from '$lib/server/supabase';
-import { calculateLecturerScores, calculateRecommendationStats } from '$lib/utils/calculations';
+import { calculateLecturerScores } from '$lib/utils/calculations';
 import type { Evaluation } from '$lib/types/database';
 
 const monthNames = [
@@ -13,21 +13,12 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
 	const supabase = createClient(cookies);
 	
 	const now = new Date();
-	const periodType = url.searchParams.get('period') || 'monthly'; // 'monthly' or 'all'
+	const periodType = url.searchParams.get('period') || 'monthly';
 	const month = parseInt(url.searchParams.get('month') || String(now.getMonth() + 1));
 	const year = parseInt(url.searchParams.get('year') || String(now.getFullYear()));
 	const week = url.searchParams.get('week') ? parseInt(url.searchParams.get('week')!) : null;
 	const lecturerId = url.searchParams.get('lecturer') || null;
 	const lectureType = url.searchParams.get('type') as 'Subuh' | 'Maghrib' | null;
-
-	// Get recommendation section setting
-	const { data: settings } = await supabase
-		.from('settings')
-		.select('value')
-		.eq('key', 'show_recommendation_section')
-		.single();
-	
-	const showRecommendationSection = settings?.value !== false;
 
 	// Build query for evaluations
 	let query = supabase
@@ -46,7 +37,6 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
 				? `${year + 1}-01-01` 
 				: `${year}-${String(month + 1).padStart(2, '0')}-01`);
 	}
-	// If periodType === 'all', no date filter - get all evaluations
 
 	if (lecturerId) {
 		query = query.eq('lecturer_id', lecturerId);
@@ -58,7 +48,7 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
 		console.error('Error fetching evaluations:', error);
 	}
 
-	// Filter by week and lecture type (requires session data)
+	// Filter by week and lecture type
 	let filteredEvaluations = (evaluations || []) as Evaluation[];
 	
 	if (week) {
@@ -69,19 +59,18 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
 		filteredEvaluations = filteredEvaluations.filter(e => e.session?.jenis_kuliah === lectureType);
 	}
 
-	// Get all lecturers for filter dropdown (include gambar_url for individual report)
+	// Get all lecturers for filter dropdown
 	const { data: lecturers } = await supabase
 		.from('lecturers')
 		.select('id, nama, gambar_url')
 		.order('nama');
 
-	// Get lecturer sessions/schedule for individual report (include minggu)
+	// Get lecturer sessions/schedule for individual report
 	let sessionsQuery = supabase
 		.from('lecture_sessions')
 		.select('lecturer_id, minggu, hari, jenis_kuliah')
 		.eq('is_active', true);
 	
-	// Only filter by month/year if not viewing all periods
 	if (periodType === 'monthly') {
 		sessionsQuery = sessionsQuery.eq('bulan', month).eq('tahun', year);
 	}
@@ -94,17 +83,14 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
 		lecturerNames[l.id] = l.nama;
 	}
 
-	// Calculate scores and stats
+	// Calculate scores
 	const lecturerScores = calculateLecturerScores(filteredEvaluations, lecturerNames);
-	const recommendationStats = calculateRecommendationStats(filteredEvaluations);
 
 	return {
 		evaluations: filteredEvaluations,
 		lecturerScores,
-		recommendationStats,
 		lecturers: lecturers || [],
 		lecturerSessions: lecturerSessions || [],
-		showRecommendationSection,
 		filters: {
 			periodType,
 			month,

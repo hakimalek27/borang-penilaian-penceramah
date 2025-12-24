@@ -8,7 +8,6 @@ export interface LecturerSummary {
 	avgQ4: number;
 	avgOverall: number;
 	totalEvaluations: number;
-	recommendationYesPercent: number;
 	trend?: 'up' | 'down' | 'stable';
 	riskLevel?: 'low' | 'medium' | 'high';
 }
@@ -18,7 +17,6 @@ export interface ReportSummary {
 	totalEvaluations: number;
 	totalLecturers: number;
 	averageScore: number;
-	recommendationYesPercent: number;
 	topPerformer?: string;
 	needsAttention?: string;
 	strengths: string[];
@@ -46,7 +44,6 @@ export function generateCsv(
 		'Masa (Q4)',
 		'Purata',
 		'Gred',
-		'Cadangan Teruskan',
 		'Komen Penceramah',
 		'Cadangan Masjid'
 	];
@@ -68,7 +65,6 @@ export function generateCsv(
 			e.q4_masa,
 			avgScore.toFixed(2),
 			grade,
-			e.cadangan_teruskan ? 'Ya' : 'Tidak',
 			escapeCsvField(e.komen_penceramah || ''),
 			escapeCsvField(e.cadangan_masjid || '')
 		].join(',');
@@ -101,7 +97,6 @@ export function generateLecturerSummaryCsv(lecturers: LecturerSummary[]): string
 		'Purata Keseluruhan',
 		'Gred',
 		'Bil. Penilaian',
-		'Cadangan Ya (%)',
 		'Trend',
 		'Tahap Risiko'
 	];
@@ -119,7 +114,6 @@ export function generateLecturerSummaryCsv(lecturers: LecturerSummary[]): string
 			l.avgOverall.toFixed(2),
 			grade,
 			l.totalEvaluations,
-			l.recommendationYesPercent.toFixed(1),
 			trendLabel,
 			riskLabel
 		].join(',');
@@ -140,7 +134,6 @@ export function generateExecutiveSummaryCsv(summary: ReportSummary): string {
 		`Jumlah Penceramah,${summary.totalLecturers}`,
 		`Purata Skor Keseluruhan,${summary.averageScore.toFixed(2)}`,
 		`Gred Keseluruhan,${getGrade(summary.averageScore)}`,
-		`Cadangan Ya (%),${summary.recommendationYesPercent.toFixed(1)}%`,
 		'',
 		'PRESTASI',
 		`Prestasi Terbaik,${escapeCsvField(summary.topPerformer || '-')}`,
@@ -239,7 +232,6 @@ export function validateCsvExport(
 		'Ilmu (Q2)',
 		'Penyampaian (Q3)',
 		'Masa (Q4)',
-		'Cadangan Teruskan',
 		'Komen Penceramah',
 		'Cadangan Masjid'
 	];

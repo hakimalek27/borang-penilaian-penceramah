@@ -26,7 +26,7 @@
 	
 	// Track which lecturers are expanded and their ratings
 	let expandedLecturers: Set<string> = $state(new Set());
-	let lecturerRatings: Record<string, { ratings: EvaluationRatings; recommendation: boolean | null }> = $state({});
+	let lecturerRatings: Record<string, { ratings: EvaluationRatings }> = $state({});
 	
 	// Comments
 	let komenPenceramah = $state('');
@@ -49,8 +49,7 @@
 				q1_tajuk: data.ratings.q1_tajuk,
 				q2_ilmu: data.ratings.q2_ilmu,
 				q3_penyampaian: data.ratings.q3_penyampaian,
-				q4_masa: data.ratings.q4_masa,
-				recommendation: data.recommendation
+				q4_masa: data.ratings.q4_masa
 			});
 		}
 		
@@ -71,6 +70,17 @@
 	// Auto-save draft on changes
 	$effect(() => {
 		if (browser && (evaluator.nama || expandedLecturers.size > 0)) {
+			// Transform lecturerRatings to flat format for draft storage
+			const flatRatings: Record<string, { q1_tajuk: number | null; q2_ilmu: number | null; q3_penyampaian: number | null; q4_masa: number | null }> = {};
+			for (const [id, data] of Object.entries(lecturerRatings)) {
+				flatRatings[id] = {
+					q1_tajuk: data.ratings.q1_tajuk,
+					q2_ilmu: data.ratings.q2_ilmu,
+					q3_penyampaian: data.ratings.q3_penyampaian,
+					q4_masa: data.ratings.q4_masa
+				};
+			}
+			
 			const draftData = {
 				evaluatorInfo: {
 					nama: evaluator.nama,
@@ -79,7 +89,7 @@
 					tarikh: evaluator.tarikh
 				},
 				selectedLecturers: Array.from(expandedLecturers),
-				ratings: lecturerRatings,
+				ratings: flatRatings,
 				komenPenceramah,
 				cadanganMasjid
 			};
@@ -108,7 +118,12 @@
 				tarikh: draft.evaluatorInfo.tarikh || data.today
 			};
 			expandedLecturers = new Set(draft.selectedLecturers);
-			lecturerRatings = draft.ratings || {};
+			// Transform flat ratings back to nested format
+			const nestedRatings: Record<string, { ratings: { q1_tajuk: number | null; q2_ilmu: number | null; q3_penyampaian: number | null; q4_masa: number | null } }> = {};
+			for (const [id, ratings] of Object.entries(draft.ratings || {})) {
+				nestedRatings[id] = { ratings };
+			}
+			lecturerRatings = nestedRatings;
 			komenPenceramah = draft.komenPenceramah || '';
 			cadanganMasjid = draft.cadanganMasjid || '';
 		}
@@ -140,8 +155,7 @@
 			// Initialize ratings if not exists
 			if (!lecturerRatings[sessionId]) {
 				lecturerRatings[sessionId] = {
-					ratings: { q1_tajuk: null, q2_ilmu: null, q3_penyampaian: null, q4_masa: null },
-					recommendation: null
+					ratings: { q1_tajuk: null, q2_ilmu: null, q3_penyampaian: null, q4_masa: null }
 				};
 			}
 		}
@@ -151,12 +165,6 @@
 	function updateRating(sessionId: string, question: keyof EvaluationRatings, value: number) {
 		if (lecturerRatings[sessionId]) {
 			lecturerRatings[sessionId].ratings[question] = value;
-		}
-	}
-
-	function updateRecommendation(sessionId: string, value: boolean) {
-		if (lecturerRatings[sessionId]) {
-			lecturerRatings[sessionId].recommendation = value;
 		}
 	}
 
@@ -179,11 +187,9 @@
 			sessionId: string;
 			lecturerId: string;
 			ratings: EvaluationRatings;
-			recommendation: boolean | null;
 		}> = [];
 
 		for (const [sessionId, ratingData] of Object.entries(lecturerRatings)) {
-			// Only require ratings to be complete, recommendation is optional
 			if (isRatingsComplete(ratingData.ratings)) {
 				const session = Object.values($state.snapshot(ratingData)).length > 0 
 					? findSession(sessionId) 
@@ -192,8 +198,7 @@
 					evaluations.push({
 						sessionId,
 						lecturerId: session.lecturer_id,
-						ratings: ratingData.ratings as EvaluationRatings,
-						recommendation: ratingData.recommendation // Can be null
+						ratings: ratingData.ratings as EvaluationRatings
 					});
 				}
 			}
@@ -314,7 +319,7 @@
 			src="/images/masjid-banner.jpg" 
 			alt="Masjid Al-Muttaqin Wangsa Melawati" 
 			class="banner-image"
-			onerror={(e) => (e.currentTarget.style.display = 'none')}
+			onerror={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
 		/>
 		<h1>Borang Maklum Balas Kuliah Bulanan</h1>
 		<p class="subtitle">Masjid Al-Muttaqin Wangsa Melawati, Kuala Lumpur</p>
@@ -358,11 +363,8 @@
 									{session}
 									isExpanded={expandedLecturers.has(session.id)}
 									ratings={lecturerRatings[session.id]?.ratings}
-									recommendation={lecturerRatings[session.id]?.recommendation}
-									showRecommendation={data.showRecommendationSection}
 									onToggle={() => toggleLecturer(session.id)}
 									onRatingChange={(q, v) => updateRating(session.id, q, v)}
-									onRecommendationChange={(v) => updateRecommendation(session.id, v)}
 								/>
 							{/each}
 						</div>

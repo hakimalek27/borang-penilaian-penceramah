@@ -8,7 +8,6 @@
 	let emailEnabled = $state(data.emailNotificationsEnabled);
 	let adminEmails = $state(data.adminEmails?.join(', ') || '');
 	let alertThreshold = $state(data.alertThreshold?.toString() || '2.0');
-	let showRecommendation = $state(data.showRecommendationSection);
 </script>
 
 <svelte:head>
@@ -125,40 +124,6 @@
 
 				<div class="form-actions">
 					<Button type="submit">Simpan Tetapan Alert</Button>
-				</div>
-			</form>
-		</section>
-
-		<!-- Form Settings Section -->
-		<section class="settings-card">
-			<h2>📝 Tetapan Borang Penilaian</h2>
-			<p class="description">
-				Kawal paparan section dalam borang penilaian jemaah.
-			</p>
-
-			<form method="POST" action="?/updateFormSettings" use:enhance>
-				<div class="form-group">
-					<label class="toggle-label">
-						<input 
-							type="checkbox" 
-							name="showRecommendation"
-							value="true"
-							checked={showRecommendation}
-							onchange={(e) => showRecommendation = e.currentTarget.checked}
-							class="toggle-checkbox"
-						/>
-						<span class="toggle-switch"></span>
-						<span class="toggle-text">
-							{showRecommendation ? 'Papar "Cadangan untuk diteruskan?"' : 'Sembunyikan "Cadangan untuk diteruskan?"'}
-						</span>
-					</label>
-					<p class="hint" style="margin-top: 0.75rem;">
-						Jika diaktifkan, jemaah akan diminta untuk menjawab soalan "Cadangan untuk diteruskan?" dalam borang penilaian.
-					</p>
-				</div>
-
-				<div class="form-actions">
-					<Button type="submit">Simpan Tetapan Borang</Button>
 				</div>
 			</form>
 		</section>

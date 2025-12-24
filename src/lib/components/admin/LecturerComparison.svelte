@@ -103,8 +103,6 @@
 					<tr>
 						<th>Penceramah</th>
 						<th>Purata</th>
-						<th>Ya (%)</th>
-						<th>Tidak (%)</th>
 						<th>Jumlah</th>
 					</tr>
 				</thead>
@@ -113,8 +111,6 @@
 						<tr>
 							<td>{comparison.lecturerName}</td>
 							<td class="score">{comparison.avgOverall.toFixed(2)}</td>
-							<td class="yes">{comparison.recommendationYesPercent.toFixed(1)}%</td>
-							<td class="no">{comparison.recommendationNoPercent.toFixed(1)}%</td>
 							<td>{comparison.totalEvaluations}</td>
 						</tr>
 					{/each}
@@ -164,14 +160,6 @@
 	.score {
 		font-weight: 600;
 		color: #1f2937;
-	}
-
-	.yes {
-		color: #059669;
-	}
-
-	.no {
-		color: #dc2626;
 	}
 
 	.no-data {

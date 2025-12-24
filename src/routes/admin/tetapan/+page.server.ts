@@ -15,8 +15,7 @@ export const load: PageServerLoad = async ({ cookies }) => {
 	return {
 		emailNotificationsEnabled: settingsMap.get('email_notifications_enabled') === true,
 		alertThreshold: settingsMap.get('alert_threshold') ?? 2.0,
-		adminEmails: settingsMap.get('admin_emails') ?? [],
-		showRecommendationSection: settingsMap.get('show_recommendation_section') !== false
+		adminEmails: settingsMap.get('admin_emails') ?? []
 	};
 };
 
@@ -75,23 +74,5 @@ export const actions: Actions = {
 		}
 
 		return { success: true, message: 'Tetapan alert berjaya dikemaskini' };
-	},
-
-	updateFormSettings: async ({ request, cookies }) => {
-		const formData = await request.formData();
-		// Checkbox sends 'true' when checked, nothing when unchecked
-		const showRecommendation = formData.has('showRecommendation');
-
-		const supabase = createClient(cookies);
-
-		const { error } = await supabase
-			.from('settings')
-			.upsert({ key: 'show_recommendation_section', value: showRecommendation }, { onConflict: 'key' });
-
-		if (error) {
-			return fail(500, { error: 'Gagal menyimpan tetapan borang' });
-		}
-
-		return { success: true, message: 'Tetapan borang berjaya dikemaskini' };
 	}
 };

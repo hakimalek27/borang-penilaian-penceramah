@@ -9,12 +9,12 @@
 
 	// State for lecturer selection
 	let selectedLecturers = $state<string[]>(data.selectedIds || []);
-	let filterMonth = $state<number | null>(data.filters.month);
-	let filterYear = $state<number | null>(data.filters.year);
+	let filterMonth = $state<number | string>(data.filters.month || '');
+	let filterYear = $state<number | string>(data.filters.year || '');
 
 	// Generate month options
 	const monthOptions = [
-		{ value: null, label: 'Semua Bulan' },
+		{ value: '', label: 'Semua Bulan' },
 		{ value: 1, label: 'Januari' },
 		{ value: 2, label: 'Februari' },
 		{ value: 3, label: 'Mac' },
@@ -32,7 +32,7 @@
 	// Generate year options
 	const currentYear = new Date().getFullYear();
 	const yearOptions = [
-		{ value: null, label: 'Semua Tahun' },
+		{ value: '', label: 'Semua Tahun' },
 		...Array.from({ length: 5 }, (_, i) => ({
 			value: currentYear - i,
 			label: String(currentYear - i)
@@ -63,8 +63,8 @@
 
 	function clearSelection() {
 		selectedLecturers = [];
-		filterMonth = null;
-		filterYear = null;
+		filterMonth = '';
+		filterYear = '';
 		goto('/admin/perbandingan');
 	}
 </script>

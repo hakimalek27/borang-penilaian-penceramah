@@ -38,7 +38,7 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
 	// Build evaluation query
 	let query = supabase
 		.from('evaluations')
-		.select('lecturer_id, q1_tajuk, q2_ilmu, q3_penyampaian, q4_masa, cadangan_teruskan');
+		.select('lecturer_id, q1_tajuk, q2_ilmu, q3_penyampaian, q4_masa');
 
 	// Apply date filters if provided
 	if (month && year) {

@@ -52,23 +52,17 @@
 		let gradeColor: string;
 		if (percentage >= 76) {
 			grade = 'A';
-			gradeColor = '#1a5f2a'; // hijau
+			gradeColor = '#1a5f2a';
 		} else if (percentage >= 51) {
 			grade = 'B';
-			gradeColor = '#f0ad4e'; // kuning
+			gradeColor = '#f0ad4e';
 		} else if (percentage >= 26) {
 			grade = 'C';
-			gradeColor = '#fd7e14'; // oren
+			gradeColor = '#fd7e14';
 		} else {
 			grade = 'D';
-			gradeColor = '#dc3545'; // merah
+			gradeColor = '#dc3545';
 		}
-
-		// Recommendation stats
-		const yesCount = lecturerEvals.filter(e => e.cadangan_teruskan).length;
-		const noCount = lecturerEvals.filter(e => !e.cadangan_teruskan).length;
-		const yesPercent = totalResponses > 0 ? (yesCount / totalResponses) * 100 : 0;
-		const noPercent = totalResponses > 0 ? (noCount / totalResponses) * 100 : 0;
 
 		return {
 			totalResponses,
@@ -81,13 +75,7 @@
 			maxTotal,
 			percentage,
 			grade,
-			gradeColor,
-			recommendation: {
-				yes: yesCount,
-				no: noCount,
-				yesPercent,
-				noPercent
-			}
+			gradeColor
 		};
 	});
 
@@ -134,15 +122,14 @@
 	);
 
 	const analytics = $derived(generateAnalytics({
-		evaluations: data.evaluations,
-		lecturerScores: data.lecturerScores.map(s => ({
-			...s,
-			recommendationYesPercent: data.evaluations.filter(e => 
-				e.lecturer_id === data.lecturers.find(l => l.nama === s.lecturerName)?.id && e.cadangan_teruskan
-			).length / Math.max(1, data.evaluations.filter(e => 
-				e.lecturer_id === data.lecturers.find(l => l.nama === s.lecturerName)?.id
-			).length) * 100
+		evaluations: data.evaluations.map(e => ({
+			q1_tajuk: e.q1_tajuk,
+			q2_ilmu: e.q2_ilmu,
+			q3_penyampaian: e.q3_penyampaian,
+			q4_masa: e.q4_masa,
+			lecturer_id: e.lecturer_id ?? undefined
 		})),
+		lecturerScores: data.lecturerScores,
 		period: periodLabel
 	}));
 
@@ -170,11 +157,6 @@
 		} else if (type === 'lecturer') {
 			const lecturerData: LecturerSummary[] = data.lecturerScores.map(s => ({
 				...s,
-				recommendationYesPercent: data.evaluations.filter(e => 
-					e.lecturer_id === data.lecturers.find(l => l.nama === s.lecturerName)?.id && e.cadangan_teruskan
-				).length / Math.max(1, data.evaluations.filter(e => 
-					e.lecturer_id === data.lecturers.find(l => l.nama === s.lecturerName)?.id
-				).length) * 100,
 				trend: 'stable' as const,
 				riskLevel: analytics.riskAssessment.find(r => r.lecturerName === s.lecturerName)?.riskLevel || 'low'
 			}));
@@ -208,9 +190,7 @@
 			},
 			summaryStats: {
 				totalEvaluations: data.evaluations.length,
-				averageScore: avgScore,
-				recommendationYes: data.recommendationStats.ya,
-				recommendationNo: data.recommendationStats.tidak
+				averageScore: avgScore
 			},
 			lecturerScores: data.lecturerScores.map(s => ({
 				...s,
@@ -227,7 +207,7 @@
 				q2: e.q2_ilmu,
 				q3: e.q3_penyampaian,
 				q4: e.q4_masa,
-				cadanganTeruskan: e.cadangan_teruskan
+				cadanganTeruskan: null
 			})),
 			insights: analytics.insights
 		};
@@ -240,8 +220,6 @@
 	// Chart data
 	const chartLabels = $derived(data.lecturerScores.map(s => s.lecturerName));
 	const chartData = $derived(data.lecturerScores.map(s => s.avgOverall));
-	const pieLabels = ['Ya', 'Tidak'];
-	const pieData = $derived([data.recommendationStats.ya, data.recommendationStats.tidak]);
 
 	// Dynamic import for charts (client-side only)
 	let BarChart: any = $state(null);
@@ -305,7 +283,7 @@
 
 	<!-- Individual Lecturer Report -->
 	{#if showIndividualReport && selectedLecturerInfo && individualReport()}
-		{@const report = individualReport()}
+		{@const report = individualReport()!}
 		{@const lecturerSchedule = data.lecturerSessions?.filter(s => s.lecturer_id === selectedLecturer) || []}
 		<div class="individual-report" id="individual-report">
 			<div class="report-header">
@@ -386,28 +364,6 @@
 				</div>
 			</div>
 
-			{#if data.showRecommendationSection}
-			<div class="recommendation-section">
-				<h3>Cadangan Diteruskan</h3>
-				<div class="recommendation-bars">
-					<div class="rec-item">
-						<span class="rec-label">✅ Ya</span>
-						<div class="rec-bar-container">
-							<div class="rec-bar rec-yes" style="width: {report.recommendation.yesPercent}%"></div>
-						</div>
-						<span class="rec-value">{report.recommendation.yes} ({report.recommendation.yesPercent.toFixed(0)}%)</span>
-					</div>
-					<div class="rec-item">
-						<span class="rec-label">❌ Tidak</span>
-						<div class="rec-bar-container">
-							<div class="rec-bar rec-no" style="width: {report.recommendation.noPercent}%"></div>
-						</div>
-						<span class="rec-value">{report.recommendation.no} ({report.recommendation.noPercent.toFixed(0)}%)</span>
-					</div>
-				</div>
-			</div>
-			{/if}
-
 			<div class="grade-legend">
 				<h4>Skala Gred</h4>
 				<div class="legend-items">
@@ -434,16 +390,6 @@
 			<div class="stat-value">{analytics.summary.averageScore.toFixed(2)}</div>
 			<div class="stat-label">Purata Skor</div>
 		</div>
-		{#if data.showRecommendationSection}
-		<div class="stat-card highlight-green">
-			<div class="stat-value">{data.recommendationStats.ya}</div>
-			<div class="stat-label">Cadangan Ya ({analytics.summary.recommendationYesPercent.toFixed(0)}%)</div>
-		</div>
-		<div class="stat-card highlight-red">
-			<div class="stat-value">{data.recommendationStats.tidak}</div>
-			<div class="stat-label">Cadangan Tidak</div>
-		</div>
-		{/if}
 	</div>
 
 	<!-- Insights Section -->
@@ -505,19 +451,6 @@
 				<p class="loading">Memuatkan carta...</p>
 			{/if}
 		</div>
-
-		{#if data.showRecommendationSection}
-		<div class="chart-card">
-			<h3>Cadangan Diteruskan</h3>
-			{#if PieChart && (pieData[0] > 0 || pieData[1] > 0)}
-				<svelte:component this={PieChart} labels={pieLabels} data={pieData} />
-			{:else if pieData[0] === 0 && pieData[1] === 0}
-				<p class="no-data">Tiada data untuk dipaparkan</p>
-			{:else}
-				<p class="loading">Memuatkan carta...</p>
-			{/if}
-		</div>
-		{/if}
 	</div>
 
 	<!-- Lecturer Scores Table -->
@@ -588,9 +521,6 @@
 							<th>Q2</th>
 							<th>Q3</th>
 							<th>Q4</th>
-							{#if data.showRecommendationSection}
-							<th>Cadangan</th>
-							{/if}
 							<th class="action-col">Tindakan</th>
 						</tr>
 					</thead>
@@ -604,11 +534,6 @@
 								<td>{evaluation.q2_ilmu}</td>
 								<td>{evaluation.q3_penyampaian}</td>
 								<td>{evaluation.q4_masa}</td>
-								{#if data.showRecommendationSection}
-								<td class={evaluation.cadangan_teruskan ? 'yes' : evaluation.cadangan_teruskan === false ? 'no' : ''}>
-									{evaluation.cadangan_teruskan === true ? 'Ya' : evaluation.cadangan_teruskan === false ? 'Tidak' : '-'}
-								</td>
-								{/if}
 								<td class="action-col">
 									{#if deleteConfirmId === evaluation.id}
 										<div class="delete-confirm">

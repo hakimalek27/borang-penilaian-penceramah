@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import * as fc from 'fast-check';
 import {
 	calculateLecturerScores,
-	calculateRecommendationStats,
 	countEvaluationsPerLecturer,
 	calculateQuestionAverage
 } from './calculations';
@@ -111,36 +110,6 @@ describe('Property 13: Average Score Calculation', () => {
 
 	it('should return 0 for empty evaluations', () => {
 		expect(calculateQuestionAverage([], 'q1_tajuk')).toBe(0);
-	});
-});
-
-/**
- * **Feature: sistem-penilaian-kuliah, Property 14: Recommendation Distribution Calculation**
- * **Validates: Requirements 10.4**
- * 
- * For any set of evaluations, the Ya count SHALL equal the number of evaluations
- * where cadangan_teruskan is true, and the Tidak count SHALL equal the number where it is false.
- */
-describe('Property 14: Recommendation Distribution Calculation', () => {
-	it('should count Ya and Tidak correctly', () => {
-		fc.assert(
-			fc.property(
-				fc.array(evaluationArb, { minLength: 0, maxLength: 50 }),
-				(evaluations) => {
-					const evals = evaluations as Evaluation[];
-					const stats = calculateRecommendationStats(evals);
-
-					// Count manually
-					const expectedYa = evals.filter(e => e.cadangan_teruskan).length;
-					const expectedTidak = evals.filter(e => !e.cadangan_teruskan).length;
-
-					expect(stats.ya).toBe(expectedYa);
-					expect(stats.tidak).toBe(expectedTidak);
-					expect(stats.ya + stats.tidak).toBe(evals.length);
-				}
-			),
-			{ numRuns: 100 }
-		);
 	});
 });
 

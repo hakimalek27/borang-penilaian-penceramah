@@ -22,7 +22,6 @@ export interface DraftData {
 		q2_ilmu: number | null;
 		q3_penyampaian: number | null;
 		q4_masa: number | null;
-		recommendation: boolean | null;
 	}>;
 	komenPenceramah: string;
 	cadanganMasjid: string;

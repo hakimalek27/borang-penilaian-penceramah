@@ -50,26 +50,6 @@ export function calculateLecturerScores(
 }
 
 /**
- * Calculates recommendation distribution (Ya/Tidak)
- */
-export function calculateRecommendationStats(
-	evaluations: Evaluation[]
-): { ya: number; tidak: number } {
-	let ya = 0;
-	let tidak = 0;
-
-	for (const evaluation of evaluations) {
-		if (evaluation.cadangan_teruskan) {
-			ya++;
-		} else {
-			tidak++;
-		}
-	}
-
-	return { ya, tidak };
-}
-
-/**
  * Counts evaluations per lecturer
  */
 export function countEvaluationsPerLecturer(

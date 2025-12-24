@@ -1,23 +1,16 @@
 <script lang="ts">
-	import { RadioGroup } from '$lib/components/ui';
 	import type { EvaluationRatings } from '$lib/types/database';
 
 	interface Props {
 		sessionId: string;
 		ratings?: EvaluationRatings;
-		recommendation?: boolean | null;
-		showRecommendation?: boolean;
 		onRatingChange: (question: keyof EvaluationRatings, value: number) => void;
-		onRecommendationChange: (value: boolean) => void;
 	}
 
 	let { 
 		sessionId,
 		ratings = { q1_tajuk: null, q2_ilmu: null, q3_penyampaian: null, q4_masa: null },
-		recommendation = null,
-		showRecommendation = true,
-		onRatingChange,
-		onRecommendationChange
+		onRatingChange
 	}: Props = $props();
 
 	const ratingOptions = [
@@ -27,11 +20,6 @@
 		{ value: 4, label: '4' }
 	];
 
-	const recommendationOptions = [
-		{ value: true, label: 'Ya' },
-		{ value: false, label: 'Tidak' }
-	];
-
 	const questions = [
 		{ key: 'q1_tajuk' as const, text: 'Penceramah mengikut tajuk yang telah ditetapkan' },
 		{ key: 'q2_ilmu' as const, text: 'Penceramah mempunyai ilmu pengetahuan dalam tajuk yang disampaikan' },
@@ -39,13 +27,8 @@
 		{ key: 'q4_masa' as const, text: 'Penceramah menepati jadual dan masa yang ditetapkan' }
 	];
 
-	// Handle rating change directly without local state
 	function handleRatingChange(question: keyof EvaluationRatings, value: number) {
 		onRatingChange(question, value);
-	}
-
-	function handleRecommendationChange(value: boolean) {
-		onRecommendationChange(value);
 	}
 </script>
 
@@ -74,26 +57,6 @@
 			</div>
 		</div>
 	{/each}
-
-	{#if showRecommendation}
-		<div class="recommendation-section">
-			<p class="question-text">Cadangan untuk diteruskan?</p>
-			<div class="recommendation-options">
-				{#each recommendationOptions as option}
-					<label class="recommendation-option">
-						<input 
-							type="radio" 
-							name="{sessionId}_recommendation"
-							value={option.value}
-							checked={recommendation === option.value}
-							onchange={() => handleRecommendationChange(option.value)}
-						/>
-						<span class="recommendation-label">{option.label}</span>
-					</label>
-				{/each}
-			</div>
-		</div>
-	{/if}
 </div>
 
 <style>
@@ -187,61 +150,6 @@
 
 	.rating-option input:focus-visible + .rating-label {
 		box-shadow: 0 0 0 3px rgba(26, 95, 42, 0.3);
-	}
-
-	.recommendation-section {
-		margin-top: 0.25rem;
-		padding: 0.75rem;
-		background: white;
-		border-radius: 0.5rem;
-		border: 1px solid #e8e8e8;
-	}
-
-	.recommendation-section .question-text {
-		font-weight: 600;
-		color: #1a5f2a;
-		margin-bottom: 0.75rem;
-	}
-
-	.recommendation-options {
-		display: flex;
-		gap: 0.75rem;
-	}
-
-	.recommendation-option {
-		flex: 1;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 0.5rem;
-		cursor: pointer;
-		padding: 0.75rem 1rem;
-		border: 2px solid #e0e0e0;
-		border-radius: 0.625rem;
-		transition: all 0.15s ease;
-		background: white;
-		touch-action: manipulation;
-	}
-
-	.recommendation-option:active {
-		transform: scale(0.98);
-	}
-
-	.recommendation-option:has(input:checked) {
-		border-color: #1a5f2a;
-		background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
-	}
-
-	.recommendation-option input {
-		accent-color: #1a5f2a;
-		width: 18px;
-		height: 18px;
-	}
-
-	.recommendation-label {
-		font-weight: 600;
-		color: #333;
-		font-size: 0.95rem;
 	}
 
 	/* Mobile optimizations */

@@ -2,7 +2,6 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createClient } from '$lib/server/supabase';
 import { validateEvaluatorInfo, isRatingsComplete, sanitizeString } from '$lib/utils/validation';
-import { sendNotificationSafe, type EvaluationSummary } from '$lib/server/email';
 import type { EvaluationSubmission } from '$lib/types/database';
 
 export const POST: RequestHandler = async ({ request, cookies }) => {
@@ -22,7 +21,6 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		const supabase = createClient(cookies);
 
 		// Filter only complete evaluations
-		// Recommendation is always optional - only ratings are required
 		const completeEvaluations = evaluations.filter(
 			(e) => isRatingsComplete(e.ratings)
 		);
@@ -34,17 +32,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 			);
 		}
 
-		// Get lecturer names for email notifications
-		const lecturerIds = [...new Set(completeEvaluations.map(e => e.lecturerId))];
-		const { data: lecturers } = await supabase
-			.from('lecturers')
-			.select('id, nama')
-			.in('id', lecturerIds);
-		
-		const lecturerMap = new Map(lecturers?.map(l => [l.id, l.nama]) || []);
-
 		// Prepare evaluation records
-		// Recommendation is optional - save as null if not provided
 		const records = completeEvaluations.map((evaluation) => ({
 			session_id: evaluation.sessionId,
 			lecturer_id: evaluation.lecturerId,
@@ -56,7 +44,6 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 			q2_ilmu: evaluation.ratings.q2_ilmu,
 			q3_penyampaian: evaluation.ratings.q3_penyampaian,
 			q4_masa: evaluation.ratings.q4_masa,
-			cadangan_teruskan: evaluation.recommendation, // Can be null
 			komen_penceramah: komenPenceramah ? sanitizeString(komenPenceramah) : null,
 			cadangan_masjid: cadanganMasjid ? sanitizeString(cadanganMasjid) : null
 		}));
@@ -73,29 +60,6 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 				{ error: 'Ralat semasa menyimpan penilaian. Sila cuba lagi.' },
 				{ status: 500 }
 			);
-		}
-
-		// Send email notifications (non-blocking)
-		// This runs in the background and won't affect the response
-		for (const evaluation of completeEvaluations) {
-			const ratings = evaluation.ratings;
-			const overallRating = (
-				(ratings.q1_tajuk || 0) + 
-				(ratings.q2_ilmu || 0) + 
-				(ratings.q3_penyampaian || 0) + 
-				(ratings.q4_masa || 0)
-			) / 4;
-
-			const summary: EvaluationSummary = {
-				evaluatorName: evaluator.nama,
-				lecturerName: lecturerMap.get(evaluation.lecturerId) || 'Unknown',
-				date: evaluator.tarikh,
-				overallRating,
-				recommendation: evaluation.recommendation ?? false
-			};
-
-			// Fire and forget - don't await
-			sendNotificationSafe(summary);
 		}
 
 		return json({
