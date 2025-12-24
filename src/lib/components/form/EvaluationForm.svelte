@@ -3,6 +3,7 @@
 	import type { EvaluationRatings } from '$lib/types/database';
 
 	interface Props {
+		sessionId: string;
 		ratings?: EvaluationRatings;
 		recommendation?: boolean | null;
 		showRecommendation?: boolean;
@@ -11,6 +12,7 @@
 	}
 
 	let { 
+		sessionId,
 		ratings = { q1_tajuk: null, q2_ilmu: null, q3_penyampaian: null, q4_masa: null },
 		recommendation = null,
 		showRecommendation = true,
@@ -37,46 +39,14 @@
 		{ key: 'q4_masa' as const, text: 'Penceramah menepati jadual dan masa yang ditetapkan' }
 	];
 
-	// Local state for binding
-	let localRatings = $state({
-		q1_tajuk: ratings?.q1_tajuk ?? null,
-		q2_ilmu: ratings?.q2_ilmu ?? null,
-		q3_penyampaian: ratings?.q3_penyampaian ?? null,
-		q4_masa: ratings?.q4_masa ?? null
-	});
+	// Handle rating change directly without local state
+	function handleRatingChange(question: keyof EvaluationRatings, value: number) {
+		onRatingChange(question, value);
+	}
 
-	let localRecommendation = $state<boolean | null>(recommendation ?? null);
-
-	// Watch for changes and propagate
-	$effect(() => {
-		if (localRatings.q1_tajuk !== null && localRatings.q1_tajuk !== ratings?.q1_tajuk) {
-			onRatingChange('q1_tajuk', localRatings.q1_tajuk);
-		}
-	});
-
-	$effect(() => {
-		if (localRatings.q2_ilmu !== null && localRatings.q2_ilmu !== ratings?.q2_ilmu) {
-			onRatingChange('q2_ilmu', localRatings.q2_ilmu);
-		}
-	});
-
-	$effect(() => {
-		if (localRatings.q3_penyampaian !== null && localRatings.q3_penyampaian !== ratings?.q3_penyampaian) {
-			onRatingChange('q3_penyampaian', localRatings.q3_penyampaian);
-		}
-	});
-
-	$effect(() => {
-		if (localRatings.q4_masa !== null && localRatings.q4_masa !== ratings?.q4_masa) {
-			onRatingChange('q4_masa', localRatings.q4_masa);
-		}
-	});
-
-	$effect(() => {
-		if (localRecommendation !== null && localRecommendation !== recommendation) {
-			onRecommendationChange(localRecommendation);
-		}
-	});
+	function handleRecommendationChange(value: boolean) {
+		onRecommendationChange(value);
+	}
 </script>
 
 <div class="evaluation-form">
@@ -92,10 +62,10 @@
 						<label class="rating-option">
 							<input 
 								type="radio" 
-								name={question.key}
+								name="{sessionId}_{question.key}"
 								value={option.value}
-								checked={localRatings[question.key] === option.value}
-								onchange={() => localRatings[question.key] = option.value}
+								checked={ratings?.[question.key] === option.value}
+								onchange={() => handleRatingChange(question.key, option.value)}
 							/>
 							<span class="rating-label">{option.label}</span>
 						</label>
@@ -113,10 +83,10 @@
 					<label class="recommendation-option">
 						<input 
 							type="radio" 
-							name="recommendation"
+							name="{sessionId}_recommendation"
 							value={option.value}
-							checked={localRecommendation === option.value}
-							onchange={() => localRecommendation = option.value}
+							checked={recommendation === option.value}
+							onchange={() => handleRecommendationChange(option.value)}
 						/>
 						<span class="recommendation-label">{option.label}</span>
 					</label>

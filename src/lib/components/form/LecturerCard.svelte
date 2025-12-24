@@ -60,6 +60,7 @@
 	{#if isExpanded}
 		<div class="card-body">
 			<EvaluationForm 
+				sessionId={session.id}
 				{ratings}
 				{recommendation}
 				{showRecommendation}
