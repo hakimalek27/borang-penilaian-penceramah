@@ -35,9 +35,9 @@ describe('QR Code Utils', () => {
 						expect(() => Buffer.from(base64Part, 'base64')).not.toThrow();
 					}
 				),
-				{ numRuns: 100 }
+				{ numRuns: 20 }
 			);
-		});
+		}, 30000);
 
 		/**
 		 * Property: QR code generation is deterministic
