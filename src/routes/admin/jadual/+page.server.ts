@@ -2,11 +2,6 @@ import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { createClient } from '$lib/server/supabase';
 
-const monthNames = [
-	'Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun',
-	'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'
-];
-
 // Urutan hari dalam minggu
 const dayOrder: Record<string, number> = {
 	'Isnin': 1,
@@ -25,22 +20,16 @@ const lectureTypeOrder: Record<string, number> = {
 	'Maghrib': 3
 };
 
-export const load: PageServerLoad = async ({ cookies, url }) => {
+export const load: PageServerLoad = async ({ cookies }) => {
 	const supabase = createClient(cookies);
-	
-	const now = new Date();
-	const month = parseInt(url.searchParams.get('month') || String(now.getMonth() + 1));
-	const year = parseInt(url.searchParams.get('year') || String(now.getFullYear()));
 
-	// Fetch sessions for selected month
+	// Fetch ALL sessions (no month/year filter)
 	const { data: sessions, error: sessionsError } = await supabase
 		.from('lecture_sessions')
 		.select(`
 			*,
 			lecturer:lecturers(id, nama, gambar_url)
-		`)
-		.eq('bulan', month)
-		.eq('tahun', year);
+		`);
 
 	if (sessionsError) {
 		console.error('Error fetching sessions:', sessionsError);
@@ -82,34 +71,30 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
 
 	return {
 		sessionsByWeek,
-		lecturers: lecturers || [],
-		selectedMonth: month,
-		selectedYear: year,
-		monthNames
+		lecturers: lecturers || []
 	};
 };
 
 export const actions: Actions = {
 	create: async ({ request, cookies }) => {
 		const formData = await request.formData();
-		const bulan = parseInt(formData.get('bulan') as string);
-		const tahun = parseInt(formData.get('tahun') as string);
 		const minggu = parseInt(formData.get('minggu') as string);
 		const hari = formData.get('hari') as string;
 		const jenis_kuliah = formData.get('jenis_kuliah') as string;
 		const lecturer_id = formData.get('lecturer_id') as string;
 
-		if (!bulan || !tahun || !minggu || !hari || !jenis_kuliah || !lecturer_id) {
+		if (!minggu || !hari || !jenis_kuliah || !lecturer_id) {
 			return fail(400, { error: 'Semua medan diperlukan' });
 		}
 
 		const supabase = createClient(cookies);
 
+		// Set bulan=0 dan tahun=0 untuk menandakan sesi tetap (bukan bulanan)
 		const { error } = await supabase
 			.from('lecture_sessions')
 			.insert({
-				bulan,
-				tahun,
+				bulan: 0,
+				tahun: 0,
 				minggu,
 				hari,
 				jenis_kuliah,

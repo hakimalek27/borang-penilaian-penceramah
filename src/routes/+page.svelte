@@ -141,11 +141,6 @@
 		window.scrollTo({ top: 0, behavior: 'smooth' });
 	}
 
-	// Month names in Malay
-	const monthNames = [
-		'Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun',
-		'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'
-	];
 
 	function toggleLecturer(sessionId: string) {
 		if (expandedLecturers.has(sessionId)) {
@@ -315,15 +310,14 @@
 <main class="container">
 	<!-- Banner -->
 	<header class="banner">
-		<img 
-			src="/images/masjid-banner.jpg" 
-			alt="Masjid Al-Muttaqin Wangsa Melawati" 
+		<img
+			src="/images/masjid-banner.jpg"
+			alt="Masjid Al-Muttaqin Wangsa Melawati"
 			class="banner-image"
 			onerror={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
 		/>
-		<h1>Borang Maklum Balas Kuliah Bulanan</h1>
+		<h1>Borang Maklum Balas Kuliah</h1>
 		<p class="subtitle">Masjid Al-Muttaqin Wangsa Melawati, Kuala Lumpur</p>
-		<p class="month-info">{monthNames[data.currentMonth - 1]} {data.currentYear}</p>
 	</header>
 
 	<!-- Progress Indicator -->
@@ -562,16 +556,6 @@
 		font-size: 0.9rem;
 	}
 
-	.month-info {
-		display: inline-block;
-		background: linear-gradient(135deg, #1a5f2a, #2d8a3e);
-		color: white;
-		font-weight: 600;
-		margin-top: 0.75rem;
-		padding: 0.5rem 1.25rem;
-		border-radius: 2rem;
-		font-size: 0.9rem;
-	}
 
 	.section-desc {
 		color: #666;

@@ -2,20 +2,15 @@ import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { createClient } from '$lib/server/supabase';
 
-const monthNames = [
-	'Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun',
-	'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'
-];
-
 export const load: PageServerLoad = async ({ cookies, url }) => {
 	const supabase = createClient(cookies);
-	
-	const now = new Date();
-	const selectedMonth = parseInt(url.searchParams.get('bulan') || String(now.getMonth() + 1));
-	const selectedYear = parseInt(url.searchParams.get('tahun') || String(now.getFullYear()));
 
-	// Get all comments for lecturers
-	const { data: allComments } = await supabase
+	// Get date range filters from URL params
+	const dateFrom = url.searchParams.get('from') || null;
+	const dateTo = url.searchParams.get('to') || null;
+
+	// Build query for comments
+	let commentsQuery = supabase
 		.from('evaluations')
 		.select(`
 			id,
@@ -24,15 +19,20 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
 			komen_penceramah
 		`)
 		.not('komen_penceramah', 'is', null)
-		.neq('komen_penceramah', '')
-		.gte('tarikh_penilaian', `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`)
-		.lt('tarikh_penilaian', selectedMonth === 12 
-			? `${selectedYear + 1}-01-01` 
-			: `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`)
-		.order('tarikh_penilaian', { ascending: false });
+		.neq('komen_penceramah', '');
 
-	// Get all suggestions for mosque
-	const { data: allSuggestions } = await supabase
+	// Apply date range filters
+	if (dateFrom) {
+		commentsQuery = commentsQuery.gte('tarikh_penilaian', dateFrom);
+	}
+	if (dateTo) {
+		commentsQuery = commentsQuery.lte('tarikh_penilaian', dateTo);
+	}
+
+	const { data: allComments } = await commentsQuery.order('tarikh_penilaian', { ascending: false });
+
+	// Build query for suggestions
+	let suggestionsQuery = supabase
 		.from('evaluations')
 		.select(`
 			id,
@@ -41,12 +41,17 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
 			cadangan_masjid
 		`)
 		.not('cadangan_masjid', 'is', null)
-		.neq('cadangan_masjid', '')
-		.gte('tarikh_penilaian', `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`)
-		.lt('tarikh_penilaian', selectedMonth === 12 
-			? `${selectedYear + 1}-01-01` 
-			: `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`)
-		.order('tarikh_penilaian', { ascending: false });
+		.neq('cadangan_masjid', '');
+
+	// Apply date range filters
+	if (dateFrom) {
+		suggestionsQuery = suggestionsQuery.gte('tarikh_penilaian', dateFrom);
+	}
+	if (dateTo) {
+		suggestionsQuery = suggestionsQuery.lte('tarikh_penilaian', dateTo);
+	}
+
+	const { data: allSuggestions } = await suggestionsQuery.order('tarikh_penilaian', { ascending: false });
 
 	// Remove duplicate comments (same person, same date, same comment)
 	const uniqueComments: Array<{ id: string; nama_penilai: string; tarikh: string; komen: string }> = [];
@@ -89,10 +94,10 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
 	return {
 		lecturerComments: uniqueComments,
 		mosqueSuggestions: uniqueSuggestions,
-		selectedMonth,
-		selectedYear,
-		monthName: monthNames[selectedMonth - 1],
-		monthNames
+		filters: {
+			dateFrom,
+			dateTo
+		}
 	};
 };
 

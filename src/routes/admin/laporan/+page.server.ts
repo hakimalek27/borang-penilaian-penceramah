@@ -4,21 +4,15 @@ import { createClient } from '$lib/server/supabase';
 import { calculateLecturerScores } from '$lib/utils/calculations';
 import type { Evaluation } from '$lib/types/database';
 
-const monthNames = [
-	'Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun',
-	'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'
-];
-
 export const load: PageServerLoad = async ({ cookies, url }) => {
 	const supabase = createClient(cookies);
-	
-	const now = new Date();
-	const periodType = url.searchParams.get('period') || 'monthly';
-	const month = parseInt(url.searchParams.get('month') || String(now.getMonth() + 1));
-	const year = parseInt(url.searchParams.get('year') || String(now.getFullYear()));
+
+	// Get filter params - date range based
+	const dateFrom = url.searchParams.get('from') || null;
+	const dateTo = url.searchParams.get('to') || null;
 	const week = url.searchParams.get('week') ? parseInt(url.searchParams.get('week')!) : null;
 	const lecturerId = url.searchParams.get('lecturer') || null;
-	const lectureType = url.searchParams.get('type') as 'Subuh' | 'Maghrib' | null;
+	const lectureType = url.searchParams.get('type') as 'Subuh' | 'Maghrib' | 'Tazkirah Jumaat' | null;
 
 	// Build query for evaluations
 	let query = supabase
@@ -29,13 +23,12 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
 			lecturer:lecturers(id, nama)
 		`);
 
-	// Apply date filter based on period type
-	if (periodType === 'monthly') {
-		query = query
-			.gte('tarikh_penilaian', `${year}-${String(month).padStart(2, '0')}-01`)
-			.lt('tarikh_penilaian', month === 12 
-				? `${year + 1}-01-01` 
-				: `${year}-${String(month + 1).padStart(2, '0')}-01`);
+	// Apply date range filter if provided
+	if (dateFrom) {
+		query = query.gte('tarikh_penilaian', dateFrom);
+	}
+	if (dateTo) {
+		query = query.lte('tarikh_penilaian', dateTo);
 	}
 
 	if (lecturerId) {
@@ -50,11 +43,11 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
 
 	// Filter by week and lecture type
 	let filteredEvaluations = (evaluations || []) as Evaluation[];
-	
+
 	if (week) {
 		filteredEvaluations = filteredEvaluations.filter(e => e.session?.minggu === week);
 	}
-	
+
 	if (lectureType) {
 		filteredEvaluations = filteredEvaluations.filter(e => e.session?.jenis_kuliah === lectureType);
 	}
@@ -65,17 +58,12 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
 		.select('id, nama, gambar_url')
 		.order('nama');
 
-	// Get lecturer sessions/schedule for individual report
-	let sessionsQuery = supabase
+	// Get lecturer sessions/schedule for individual report (all active sessions)
+	const { data: lecturerSessions } = await supabase
 		.from('lecture_sessions')
 		.select('lecturer_id, minggu, hari, jenis_kuliah')
-		.eq('is_active', true);
-	
-	if (periodType === 'monthly') {
-		sessionsQuery = sessionsQuery.eq('bulan', month).eq('tahun', year);
-	}
-	
-	const { data: lecturerSessions } = await sessionsQuery.order('minggu', { ascending: true });
+		.eq('is_active', true)
+		.order('minggu', { ascending: true });
 
 	// Create lecturer names map
 	const lecturerNames: Record<string, string> = {};
@@ -92,14 +80,12 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
 		lecturers: lecturers || [],
 		lecturerSessions: lecturerSessions || [],
 		filters: {
-			periodType,
-			month,
-			year,
+			dateFrom,
+			dateTo,
 			week,
 			lecturerId,
 			lectureType
-		},
-		monthNames
+		}
 	};
 };
 

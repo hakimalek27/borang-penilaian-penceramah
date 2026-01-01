@@ -40,7 +40,7 @@
 	<div class="dashboard-header">
 		<div>
 			<h1>Dashboard</h1>
-			<p class="subtitle">Ringkasan penilaian bulan {data.monthName} {data.year}</p>
+			<p class="subtitle">Ringkasan keseluruhan penilaian</p>
 		</div>
 		<div class="refresh-info">
 			<span class="last-updated">Kemaskini: {lastUpdated}</span>
@@ -129,7 +129,7 @@
 			</div>
 			<a href="/admin/komen" class="view-all-link">Lihat semua komen & cadangan →</a>
 		{:else}
-			<p class="no-data">Tiada komen atau cadangan untuk bulan ini</p>
+			<p class="no-data">Tiada komen atau cadangan</p>
 		{/if}
 	</div>
 

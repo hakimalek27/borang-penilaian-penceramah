@@ -2,43 +2,28 @@ import type { PageServerLoad } from './$types';
 import { createClient } from '$lib/server/supabase';
 import { getLowScoreAlerts, type EvaluationForAlert } from '$lib/utils/alerts';
 
-const monthNames = [
-	'Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun',
-	'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'
-];
-
 const DEFAULT_ALERT_THRESHOLD = 2.0;
 
 export const load: PageServerLoad = async ({ cookies }) => {
 	const supabase = createClient(cookies);
-	
-	const now = new Date();
-	const currentMonth = now.getMonth() + 1;
-	const currentYear = now.getFullYear();
 
-	// Get total evaluations for current month
-	const nextMonth = currentMonth === 12 ? 1 : currentMonth + 1;
-	const nextYear = currentMonth === 12 ? currentYear + 1 : currentYear;
-	
+	// Get total evaluations (all time)
 	const { count: totalEvaluations } = await supabase
 		.from('evaluations')
-		.select('*', { count: 'exact', head: true })
-		.gte('tarikh_penilaian', `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`)
-		.lt('tarikh_penilaian', `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`);
+		.select('*', { count: 'exact', head: true });
 
 	// Get total lecturers
 	const { count: totalLecturers } = await supabase
 		.from('lecturers')
 		.select('*', { count: 'exact', head: true });
 
-	// Get total sessions for current month
+	// Get total active sessions
 	const { count: totalSessions } = await supabase
 		.from('lecture_sessions')
 		.select('*', { count: 'exact', head: true })
-		.eq('bulan', currentMonth)
-		.eq('tahun', currentYear);
+		.eq('is_active', true);
 
-	// Get lecturer rankings
+	// Get lecturer rankings (all time)
 	const { data: evaluations } = await supabase
 		.from('evaluations')
 		.select(`
@@ -48,9 +33,7 @@ export const load: PageServerLoad = async ({ cookies }) => {
 			q3_penyampaian,
 			q4_masa,
 			lecturer:lecturers(id, nama)
-		`)
-		.gte('tarikh_penilaian', `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`)
-		.lt('tarikh_penilaian', `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`);
+		`);
 
 	// Calculate average scores per lecturer
 	const lecturerScores: Record<string, { nama: string; total: number; count: number }> = {};
@@ -90,7 +73,7 @@ export const load: PageServerLoad = async ({ cookies }) => {
 		}
 	}
 
-	// Get recent comments and suggestions (general feedback, not lecturer-specific)
+	// Get recent comments and suggestions (all time, sorted by date)
 	const { data: rawComments } = await supabase
 		.from('evaluations')
 		.select(`
@@ -101,8 +84,6 @@ export const load: PageServerLoad = async ({ cookies }) => {
 			cadangan_masjid
 		`)
 		.or('komen_penceramah.neq.,cadangan_masjid.neq.')
-		.gte('tarikh_penilaian', `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`)
-		.lt('tarikh_penilaian', `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`)
 		.order('tarikh_penilaian', { ascending: false })
 		.limit(50); // Get more to filter duplicates
 
@@ -136,7 +117,7 @@ export const load: PageServerLoad = async ({ cookies }) => {
 		? parseFloat(String(thresholdSetting.value)) 
 		: DEFAULT_ALERT_THRESHOLD;
 
-	// Get evaluations for alerts (all time for better alert detection)
+	// Get evaluations for alerts (all time)
 	const { data: alertEvaluations } = await supabase
 		.from('evaluations')
 		.select(`
@@ -147,9 +128,7 @@ export const load: PageServerLoad = async ({ cookies }) => {
 			q4_masa,
 			tarikh_penilaian,
 			lecturer:lecturers(id, nama)
-		`)
-		.gte('tarikh_penilaian', `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`)
-		.lt('tarikh_penilaian', `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`);
+		`);
 
 	// Transform evaluations for alert calculation
 	const transformedAlertEvaluations: EvaluationForAlert[] = (alertEvaluations || []).map(e => ({
@@ -173,8 +152,6 @@ export const load: PageServerLoad = async ({ cookies }) => {
 		lowestLecturer,
 		recentComments: recentComments || [],
 		alerts,
-		alertThreshold,
-		monthName: monthNames[currentMonth - 1],
-		year: currentYear
+		alertThreshold
 	};
 };

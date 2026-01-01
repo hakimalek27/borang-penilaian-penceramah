@@ -2,7 +2,6 @@
 	import type { PageData } from './$types';
 	import { Button, Select } from '$lib/components/ui';
 	import { enhance } from '$app/forms';
-	import { goto } from '$app/navigation';
 
 	let { data }: { data: PageData } = $props();
 
@@ -41,16 +40,6 @@
 		{ value: 'Tazkirah Jumaat', label: 'Tazkirah Jumaat' }
 	];
 
-	const monthOptions = data.monthNames.map((name, i) => ({ value: i + 1, label: name }));
-	const yearOptions = [2024, 2025, 2026, 2027, 2028].map(y => ({ value: y, label: String(y) }));
-
-	let selectedMonth = $state(data.selectedMonth);
-	let selectedYear = $state(data.selectedYear);
-
-	function changeMonthYear() {
-		goto(`/admin/jadual?month=${selectedMonth}&year=${selectedYear}`);
-	}
-
 	function resetForm() {
 		minggu = 1;
 		hari = 'Isnin';
@@ -75,22 +64,6 @@
 		</Button>
 	</div>
 
-	<!-- Month/Year Selector -->
-	<div class="filter-bar">
-		<Select 
-			label="Bulan" 
-			options={monthOptions} 
-			bind:value={selectedMonth}
-			onchange={changeMonthYear}
-		/>
-		<Select 
-			label="Tahun" 
-			options={yearOptions} 
-			bind:value={selectedYear}
-			onchange={changeMonthYear}
-		/>
-	</div>
-
 	{#if showAddForm}
 		<div class="form-card">
 			<h2>Tambah Sesi Kuliah</h2>
@@ -111,9 +84,6 @@
 					await update();
 				};
 			}}>
-				<input type="hidden" name="bulan" value={data.selectedMonth} />
-				<input type="hidden" name="tahun" value={data.selectedYear} />
-				
 				<div class="form-grid">
 					<Select label="Minggu" name="minggu" options={mingguOptions} bind:value={minggu} required />
 					<Select label="Hari" name="hari" options={hariOptions} bind:value={hari} required />

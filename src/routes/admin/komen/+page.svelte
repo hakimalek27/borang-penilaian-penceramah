@@ -2,21 +2,40 @@
 	import type { PageData } from './$types';
 	import { goto } from '$app/navigation';
 	import { enhance } from '$app/forms';
-	import { Select, Button } from '$lib/components/ui';
+	import { Button } from '$lib/components/ui';
 
 	let { data }: { data: PageData } = $props();
 
 	let activeTab = $state<'komen' | 'cadangan'>('komen');
-	let selectedMonth = $state(data.selectedMonth);
-	let selectedYear = $state(data.selectedYear);
+	let dateFrom = $state(data.filters.dateFrom || '');
+	let dateTo = $state(data.filters.dateTo || '');
 	let deleteConfirmKomen = $state<string | null>(null);
 	let deleteConfirmCadangan = $state<string | null>(null);
 
-	const monthOptions = data.monthNames.map((name: string, i: number) => ({ value: i + 1, label: name }));
-	const yearOptions = [2024, 2025, 2026, 2027, 2028].map(y => ({ value: y, label: String(y) }));
+	// Generate period label for display
+	const periodLabel = $derived(() => {
+		if (dateFrom && dateTo) {
+			return `${dateFrom} - ${dateTo}`;
+		} else if (dateFrom) {
+			return `Dari ${dateFrom}`;
+		} else if (dateTo) {
+			return `Sehingga ${dateTo}`;
+		}
+		return 'Semua Tempoh';
+	});
 
 	function applyFilter() {
-		goto(`/admin/komen?bulan=${selectedMonth}&tahun=${selectedYear}`);
+		const params = new URLSearchParams();
+		if (dateFrom) params.set('from', dateFrom);
+		if (dateTo) params.set('to', dateTo);
+		const queryString = params.toString();
+		goto(`/admin/komen${queryString ? '?' + queryString : ''}`);
+	}
+
+	function clearFilters() {
+		dateFrom = '';
+		dateTo = '';
+		goto('/admin/komen');
 	}
 
 	function getKomenKey(comment: { nama_penilai: string; tarikh: string; komen: string }) {
@@ -35,23 +54,23 @@
 <div class="page">
 	<div class="page-header">
 		<h1>Komen & Cadangan</h1>
-		<p class="subtitle">{data.monthName} {data.selectedYear}</p>
+		<p class="subtitle">{periodLabel()}</p>
 	</div>
 
 	<!-- Filter -->
 	<div class="filter-bar">
-		<Select 
-			label="Bulan" 
-			options={monthOptions} 
-			bind:value={selectedMonth}
-			onchange={applyFilter}
-		/>
-		<Select 
-			label="Tahun" 
-			options={yearOptions} 
-			bind:value={selectedYear}
-			onchange={applyFilter}
-		/>
+		<div class="date-filter">
+			<label for="dateFrom">Dari Tarikh</label>
+			<input type="date" id="dateFrom" bind:value={dateFrom} />
+		</div>
+		<div class="date-filter">
+			<label for="dateTo">Hingga Tarikh</label>
+			<input type="date" id="dateTo" bind:value={dateTo} />
+		</div>
+		<div class="filter-actions">
+			<Button onclick={applyFilter}>Tapis</Button>
+			<Button variant="secondary" onclick={clearFilters}>Reset</Button>
+		</div>
 	</div>
 
 	<!-- Tabs -->
@@ -111,7 +130,7 @@
 				</div>
 			{:else}
 				<div class="empty-state">
-					<p>Tiada komen untuk penceramah pada bulan ini.</p>
+					<p>Tiada komen untuk penceramah.</p>
 				</div>
 			{/if}
 		{:else}
@@ -151,7 +170,7 @@
 				</div>
 			{:else}
 				<div class="empty-state">
-					<p>Tiada cadangan untuk masjid pada bulan ini.</p>
+					<p>Tiada cadangan untuk masjid.</p>
 				</div>
 			{/if}
 		{/if}
@@ -183,6 +202,43 @@
 		gap: 1rem;
 		margin-bottom: 1.5rem;
 		flex-wrap: wrap;
+		align-items: flex-end;
+		background: white;
+		padding: 1rem;
+		border-radius: 0.75rem;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+	}
+
+	.date-filter {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+
+	.date-filter label {
+		font-size: 0.85rem;
+		font-weight: 500;
+		color: #333;
+	}
+
+	.date-filter input[type="date"] {
+		padding: 0.5rem;
+		border: 1px solid #ddd;
+		border-radius: 0.375rem;
+		font-size: 0.9rem;
+		min-width: 140px;
+	}
+
+	.date-filter input[type="date"]:focus {
+		outline: none;
+		border-color: #1a5f2a;
+		box-shadow: 0 0 0 2px rgba(26, 95, 42, 0.1);
+	}
+
+	.filter-actions {
+		display: flex;
+		gap: 0.5rem;
+		align-items: flex-end;
 	}
 
 	.tabs {
@@ -368,6 +424,28 @@
 	}
 
 	@media (max-width: 640px) {
+		.filter-bar {
+			flex-direction: column;
+			align-items: stretch;
+		}
+
+		.date-filter {
+			width: 100%;
+		}
+
+		.date-filter input[type="date"] {
+			width: 100%;
+		}
+
+		.filter-actions {
+			flex-direction: column;
+			width: 100%;
+		}
+
+		.filter-actions :global(button) {
+			width: 100%;
+		}
+
 		.tabs {
 			flex-direction: column;
 			gap: 0;

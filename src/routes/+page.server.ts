@@ -26,7 +26,7 @@ function sortSessions(sessions: (LectureSession & { lecturer: Lecturer | null })
 		// First sort by day
 		const dayDiff = dayOrder[a.hari] - dayOrder[b.hari];
 		if (dayDiff !== 0) return dayDiff;
-		
+
 		// Then sort by lecture type
 		return lectureTypeOrder[a.jenis_kuliah] - lectureTypeOrder[b.jenis_kuliah];
 	});
@@ -34,21 +34,16 @@ function sortSessions(sessions: (LectureSession & { lecturer: Lecturer | null })
 
 export const load: PageServerLoad = async ({ cookies }) => {
 	const supabase = createClient(cookies);
-	
-	// Get current month and year
-	const now = new Date();
-	const currentMonth = now.getMonth() + 1;
-	const currentYear = now.getFullYear();
 
-	// Fetch active sessions for current month with lecturer info
+	const now = new Date();
+
+	// Fetch ALL active sessions (no month/year filter) with lecturer info
 	const { data: sessions, error: sessionsError } = await supabase
 		.from('lecture_sessions')
 		.select(`
 			*,
 			lecturer:lecturers(*)
 		`)
-		.eq('bulan', currentMonth)
-		.eq('tahun', currentYear)
 		.eq('is_active', true);
 
 	if (sessionsError) {
@@ -57,7 +52,7 @@ export const load: PageServerLoad = async ({ cookies }) => {
 
 	// Group sessions by week and sort properly
 	const sessionsByWeek: Record<number, (LectureSession & { lecturer: Lecturer | null })[]> = {};
-	
+
 	for (let week = 1; week <= 5; week++) {
 		sessionsByWeek[week] = [];
 	}
@@ -68,7 +63,7 @@ export const load: PageServerLoad = async ({ cookies }) => {
 				sessionsByWeek[session.minggu].push(session);
 			}
 		}
-		
+
 		// Sort each week's sessions
 		for (let week = 1; week <= 5; week++) {
 			sessionsByWeek[week] = sortSessions(sessionsByWeek[week]);
@@ -77,8 +72,6 @@ export const load: PageServerLoad = async ({ cookies }) => {
 
 	return {
 		sessionsByWeek,
-		currentMonth,
-		currentYear,
 		today: now.toISOString().split('T')[0],
 		session: null
 	};

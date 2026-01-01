@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { Button, Select } from '$lib/components/ui';
+	import { Button, Select, Input } from '$lib/components/ui';
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
 	import { enhance } from '$app/forms';
@@ -9,14 +9,13 @@
 	import { generateAnalytics } from '$lib/utils/analytics';
 
 	let { data }: { data: PageData } = $props();
-	
+
 	let deleteConfirmId = $state<string | null>(null);
 	let showExportMenu = $state(false);
 	let showIndividualReport = $state(false);
 
-	let selectedPeriod = $state(data.filters.periodType || 'monthly');
-	let selectedMonth = $state(data.filters.month);
-	let selectedYear = $state(data.filters.year);
+	let dateFrom = $state(data.filters.dateFrom || '');
+	let dateTo = $state(data.filters.dateTo || '');
 	let selectedWeek = $state<number | null>(data.filters.week);
 	let selectedLecturer = $state<string | null>(data.filters.lecturerId);
 	let selectedType = $state<string | null>(data.filters.lectureType);
@@ -83,12 +82,6 @@
 		window.print();
 	}
 
-	const periodOptions = [
-		{ value: 'monthly', label: 'Bulanan' },
-		{ value: 'all', label: 'Semua Tempoh' }
-	];
-	const monthOptions = data.monthNames.map((name, i) => ({ value: i + 1, label: name }));
-	const yearOptions = [2024, 2025, 2026, 2027, 2028].map(y => ({ value: y, label: String(y) }));
 	const weekOptions = [
 		{ value: '', label: 'Semua Minggu' },
 		{ value: 1, label: 'Minggu 1' },
@@ -114,12 +107,17 @@
 		Object.fromEntries(data.lecturers.map(l => [l.id, l.nama]))
 	);
 
-	// Generate analytics
-	const periodLabel = $derived(
-		selectedPeriod === 'all' 
-			? 'Semua Tempoh' 
-			: `${data.monthNames[data.filters.month - 1]} ${data.filters.year}`
-	);
+	// Generate period label for display
+	const periodLabel = $derived(() => {
+		if (dateFrom && dateTo) {
+			return `${dateFrom} - ${dateTo}`;
+		} else if (dateFrom) {
+			return `Dari ${dateFrom}`;
+		} else if (dateTo) {
+			return `Sehingga ${dateTo}`;
+		}
+		return 'Semua Tempoh';
+	});
 
 	const analytics = $derived(generateAnalytics({
 		evaluations: data.evaluations.map(e => ({
@@ -130,30 +128,36 @@
 			lecturer_id: e.lecturer_id ?? undefined
 		})),
 		lecturerScores: data.lecturerScores,
-		period: periodLabel
+		period: periodLabel()
 	}));
 
 	function applyFilters() {
 		const params = new URLSearchParams();
-		params.set('period', selectedPeriod);
-		if (selectedPeriod === 'monthly') {
-			params.set('month', String(selectedMonth));
-			params.set('year', String(selectedYear));
-		}
+		if (dateFrom) params.set('from', dateFrom);
+		if (dateTo) params.set('to', dateTo);
 		if (selectedWeek) params.set('week', String(selectedWeek));
 		if (selectedLecturer) params.set('lecturer', selectedLecturer);
 		if (selectedType) params.set('type', selectedType);
 		goto(`/admin/laporan?${params.toString()}`);
 	}
 
+	function clearFilters() {
+		dateFrom = '';
+		dateTo = '';
+		selectedWeek = null;
+		selectedLecturer = null;
+		selectedType = null;
+		goto('/admin/laporan');
+	}
+
 	function handleExportCsv(type: 'full' | 'lecturer' | 'summary') {
-		const monthName = data.monthNames[data.filters.month - 1];
+		const dateStr = new Date().toISOString().split('T')[0];
 		let csv: string;
 		let filename: string;
 
 		if (type === 'full') {
 			csv = generateCsv(data.evaluations, lecturerNames);
-			filename = `penilaian_penuh_${monthName}_${data.filters.year}.csv`;
+			filename = `penilaian_penuh_${dateStr}.csv`;
 		} else if (type === 'lecturer') {
 			const lecturerData: LecturerSummary[] = data.lecturerScores.map(s => ({
 				...s,
@@ -161,10 +165,10 @@
 				riskLevel: analytics.riskAssessment.find(r => r.lecturerName === s.lecturerName)?.riskLevel || 'low'
 			}));
 			csv = generateLecturerSummaryCsv(lecturerData);
-			filename = `ringkasan_penceramah_${monthName}_${data.filters.year}.csv`;
+			filename = `ringkasan_penceramah_${dateStr}.csv`;
 		} else {
 			csv = generateExecutiveSummaryCsv(analytics.summary);
-			filename = `ringkasan_eksekutif_${monthName}_${data.filters.year}.csv`;
+			filename = `ringkasan_eksekutif_${dateStr}.csv`;
 		}
 
 		downloadCsv(csv, filename);
@@ -176,17 +180,17 @@
 	}
 
 	function handleExportPdf() {
-		const monthName = data.monthNames[data.filters.month - 1];
-		
+		const dateStr = new Date().toISOString().split('T')[0];
+
 		// Calculate average score
 		const totalScore = data.lecturerScores.reduce((sum, s) => sum + s.avgOverall, 0);
 		const avgScore = data.lecturerScores.length > 0 ? totalScore / data.lecturerScores.length : 0;
 
 		const reportData: ReportData = {
-			title: `Laporan Penilaian ${monthName} ${data.filters.year}`,
+			title: `Laporan Penilaian Penceramah`,
 			dateRange: {
-				from: `1 ${monthName} ${data.filters.year}`,
-				to: `${new Date(data.filters.year, data.filters.month, 0).getDate()} ${monthName} ${data.filters.year}`
+				from: dateFrom || 'Awal',
+				to: dateTo || 'Kini'
 			},
 			summaryStats: {
 				totalEvaluations: data.evaluations.length,
@@ -212,7 +216,7 @@
 			insights: analytics.insights
 		};
 
-		const filename = `laporan-penilaian-${monthName.toLowerCase()}-${data.filters.year}.pdf`;
+		const filename = `laporan-penilaian-${dateStr}.pdf`;
 		downloadPDFReport(reportData, filename);
 		showExportMenu = false;
 	}
@@ -263,16 +267,20 @@
 
 	<!-- Filters -->
 	<div class="filter-bar">
-		<Select label="Tempoh" options={periodOptions} bind:value={selectedPeriod} />
-		{#if selectedPeriod === 'monthly'}
-			<Select label="Bulan" options={monthOptions} bind:value={selectedMonth} />
-			<Select label="Tahun" options={yearOptions} bind:value={selectedYear} />
-			<Select label="Minggu" options={weekOptions} bind:value={selectedWeek} />
-		{/if}
+		<div class="date-filter">
+			<label for="dateFrom">Dari Tarikh</label>
+			<input type="date" id="dateFrom" bind:value={dateFrom} />
+		</div>
+		<div class="date-filter">
+			<label for="dateTo">Hingga Tarikh</label>
+			<input type="date" id="dateTo" bind:value={dateTo} />
+		</div>
+		<Select label="Minggu" options={weekOptions} bind:value={selectedWeek} />
 		<Select label="Penceramah" options={lecturerOptions} bind:value={selectedLecturer} />
 		<Select label="Jenis Kuliah" options={typeOptions} bind:value={selectedType} />
 		<div class="filter-action">
 			<Button onclick={applyFilters}>Tapis</Button>
+			<Button variant="secondary" onclick={clearFilters}>Reset</Button>
 			{#if selectedLecturer && individualReport()}
 				<Button variant="secondary" onclick={() => showIndividualReport = !showIndividualReport}>
 					{showIndividualReport ? 'Tutup Laporan' : '📋 Laporan Individu'}
@@ -295,7 +303,7 @@
 					{/if}
 					<div class="lecturer-details">
 						<h2>{selectedLecturerInfo.nama}</h2>
-						<p class="report-period">Laporan Penilaian: {periodLabel}</p>
+						<p class="report-period">Laporan Penilaian: {periodLabel()}</p>
 						<p class="response-count">{report.totalResponses} responden</p>
 					</div>
 				</div>
@@ -630,6 +638,33 @@
 	.filter-action {
 		display: flex;
 		align-items: flex-end;
+		gap: 0.5rem;
+	}
+
+	.date-filter {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+
+	.date-filter label {
+		font-size: 0.85rem;
+		font-weight: 500;
+		color: #333;
+	}
+
+	.date-filter input[type="date"] {
+		padding: 0.5rem;
+		border: 1px solid #ddd;
+		border-radius: 0.375rem;
+		font-size: 0.9rem;
+		min-width: 140px;
+	}
+
+	.date-filter input[type="date"]:focus {
+		outline: none;
+		border-color: #1a5f2a;
+		box-shadow: 0 0 0 2px rgba(26, 95, 42, 0.1);
 	}
 
 	.stats-row {
