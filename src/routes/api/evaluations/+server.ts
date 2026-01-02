@@ -1,10 +1,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { createClient } from '$lib/server/supabase';
+import { createServiceRoleClient } from '$lib/server/supabase';
 import { validateEvaluatorInfo, isRatingsComplete, sanitizeString } from '$lib/utils/validation';
 import type { EvaluationSubmission } from '$lib/types/database';
 
-export const POST: RequestHandler = async ({ request, cookies }) => {
+export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const body: EvaluationSubmission = await request.json();
 		const { evaluator, evaluations, komenPenceramah, cadanganMasjid } = body;
@@ -18,7 +18,8 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 			);
 		}
 
-		const supabase = createClient(cookies);
+		// Use service role client for public form submissions (bypasses RLS)
+		const supabase = createServiceRoleClient();
 
 		// Filter only complete evaluations
 		const completeEvaluations = evaluations.filter(
