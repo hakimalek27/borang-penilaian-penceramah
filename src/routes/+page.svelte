@@ -472,7 +472,7 @@
 	}
 
 	.modal-button {
-		background: #1a5f2a;
+		background-color: #1a5f2a;
 		color: white;
 		border: none;
 		padding: 1rem 2rem;
@@ -484,24 +484,28 @@
 		width: 100%;
 		max-width: 280px;
 		touch-action: manipulation;
+		-webkit-appearance: none;
+		-moz-appearance: none;
+		appearance: none;
 	}
 
 	.modal-button:hover {
-		background: #145022;
+		background-color: #145022;
 		transform: scale(1.02);
 	}
 
 	.modal-button:active {
 		transform: scale(0.98);
+		background-color: #145022;
 	}
 
 	.modal-button.secondary {
-		background: #f5f5f5;
-		color: #666;
+		background-color: #6c757d;
+		color: white;
 	}
 
 	.modal-button.secondary:hover {
-		background: #e8e8e8;
+		background-color: #5a6268;
 	}
 
 	.modal-buttons {

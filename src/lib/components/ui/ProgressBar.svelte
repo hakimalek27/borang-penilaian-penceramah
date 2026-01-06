@@ -11,8 +11,8 @@
 	
 	const colorClass = $derived(() => {
 		if (clampedProgress < 30) return 'progress-low';
-		if (clampedProgress < 60) return 'progress-medium';
-		if (clampedProgress < 100) return 'progress-high';
+		if (clampedProgress < 51) return 'progress-medium';
+		if (clampedProgress < 100) return 'progress-high-yellow';
 		return 'progress-complete';
 	});
 </script>
@@ -71,7 +71,11 @@
 	}
 
 	.progress-medium {
-		background: linear-gradient(90deg, #ffc107, #f39c12);
+		background: linear-gradient(90deg, #ffc107, #ffca2c);
+	}
+
+	.progress-high-yellow {
+		background: linear-gradient(90deg, #ffeb3b, #ffc107);
 	}
 
 	.progress-high {
