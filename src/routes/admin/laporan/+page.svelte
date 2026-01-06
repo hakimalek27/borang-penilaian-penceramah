@@ -20,6 +20,118 @@
 	let selectedLecturer = $state<string | null>(data.filters.lecturerId);
 	let selectedType = $state<string | null>(data.filters.lectureType);
 
+	// Grouped records state
+	let searchPenilai = $state('');
+	let searchPenceramah = $state('');
+	let recordsPerPage = $state('10');
+	let currentPage = $state(1);
+	let openGroups = $state<Set<string>>(new Set());
+
+	const pageSizeOptions = [
+		{ value: '5', label: '5 kumpulan' },
+		{ value: '10', label: '10 kumpulan' },
+		{ value: '20', label: '20 kumpulan' }
+	];
+
+	const perPage = $derived.by(() => {
+		const value = parseInt(recordsPerPage, 10);
+		return Number.isFinite(value) && value > 0 ? value : 10;
+	});
+
+	const filteredEvaluations = $derived.by(() => {
+		const penilaiTerm = searchPenilai.trim().toLowerCase();
+		const lecturerTerm = searchPenceramah.trim().toLowerCase();
+
+		return data.evaluations.filter((evaluation) => {
+			const penilaiMatch = !penilaiTerm || evaluation.nama_penilai.toLowerCase().includes(penilaiTerm);
+			const lecturerName = (evaluation.lecturer?.nama || '').toLowerCase();
+			const lecturerMatch = !lecturerTerm || lecturerName.includes(lecturerTerm);
+			return penilaiMatch && lecturerMatch;
+		});
+	});
+
+	const recordGroups = $derived.by(() => {
+		const groups = new Map<string, {
+			key: string;
+			nama_penilai: string;
+			tarikh_penilaian: string;
+			items: typeof data.evaluations;
+		}>();
+
+		for (const evaluation of filteredEvaluations) {
+			const tarikh = evaluation.tarikh_penilaian || '';
+			const nama = evaluation.nama_penilai || '';
+			const key = `${nama}__${tarikh}`;
+			const existing = groups.get(key);
+			if (existing) {
+				existing.items.push(evaluation);
+			} else {
+				groups.set(key, {
+					key,
+					nama_penilai: nama,
+					tarikh_penilaian: tarikh,
+					items: [evaluation]
+				});
+			}
+		}
+
+		const result = Array.from(groups.values());
+		result.sort((a, b) => b.tarikh_penilaian.localeCompare(a.tarikh_penilaian));
+
+		for (const group of result) {
+			group.items.sort((a, b) => {
+				if (a.tarikh_penilaian === b.tarikh_penilaian) {
+					return (a.lecturer?.nama || '').localeCompare(b.lecturer?.nama || '');
+				}
+				return b.tarikh_penilaian.localeCompare(a.tarikh_penilaian);
+			});
+		}
+
+		return result;
+	});
+
+	const totalPages = $derived.by(() => Math.max(1, Math.ceil(recordGroups.length / perPage)));
+
+	const paginatedGroups = $derived.by(() => {
+		const start = (currentPage - 1) * perPage;
+		return recordGroups.slice(start, start + perPage);
+	});
+
+	const recordsStart = $derived.by(() => recordGroups.length ? (currentPage - 1) * perPage + 1 : 0);
+	const recordsEnd = $derived.by(() => Math.min(recordGroups.length, currentPage * perPage));
+
+	$effect(() => {
+		searchPenilai;
+		searchPenceramah;
+		recordsPerPage;
+		currentPage = 1;
+		openGroups = new Set();
+	});
+
+	$effect(() => {
+		currentPage;
+		openGroups = new Set();
+	});
+
+	$effect(() => {
+		if (currentPage > totalPages) {
+			currentPage = totalPages;
+		}
+		if (currentPage < 1) {
+			currentPage = 1;
+		}
+	});
+
+	function toggleGroup(key: string) {
+		if (openGroups.has(key)) {
+			openGroups = new Set([...openGroups].filter((item) => item !== key));
+			return;
+		}
+		const next = new Set(openGroups);
+		next.add(key);
+		openGroups = next;
+	}
+
 	// Get selected lecturer info for individual report
 	const selectedLecturerInfo = $derived(
 		selectedLecturer ? data.lecturers.find(l => l.id === selectedLecturer) : null
@@ -514,56 +626,98 @@
 		{/if}
 	</div>
 
-	<!-- Evaluation Records Table -->
+	<!-- Evaluation Records -->
 	<div class="table-card">
 		<h3>Rekod Penilaian</h3>
-		{#if data.evaluations.length > 0}
-			<div class="table-wrapper">
-				<table>
-					<thead>
-						<tr>
-							<th>Tarikh</th>
-							<th>Penilai</th>
-							<th>Penceramah</th>
-							<th>Q1</th>
-							<th>Q2</th>
-							<th>Q3</th>
-							<th>Q4</th>
-							<th class="action-col">Tindakan</th>
-						</tr>
-					</thead>
-					<tbody>
-						{#each data.evaluations as evaluation}
-							<tr>
-								<td>{evaluation.tarikh_penilaian}</td>
-								<td>{evaluation.nama_penilai}</td>
-								<td>{evaluation.lecturer?.nama || '-'}</td>
-								<td>{evaluation.q1_tajuk}</td>
-								<td>{evaluation.q2_ilmu}</td>
-								<td>{evaluation.q3_penyampaian}</td>
-								<td>{evaluation.q4_masa}</td>
-								<td class="action-col">
-									{#if deleteConfirmId === evaluation.id}
-										<div class="delete-confirm">
-											<form method="POST" action="?/deleteEvaluation" use:enhance={() => {
-												return async ({ update }) => {
-													deleteConfirmId = null;
-													await update();
-												};
-											}}>
-												<input type="hidden" name="id" value={evaluation.id} />
-												<button type="submit" class="btn-confirm-delete">Pasti?</button>
-											</form>
-											<button class="btn-cancel" onclick={() => deleteConfirmId = null}>Batal</button>
-										</div>
-									{:else}
-										<button class="btn-delete" onclick={() => deleteConfirmId = evaluation.id}>🗑️</button>
-									{/if}
-								</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
+		<div class="records-controls">
+			<div class="records-filters">
+				<Input label="Cari Penilai" placeholder="Nama penilai" bind:value={searchPenilai} />
+				<Input label="Cari Penceramah" placeholder="Nama penceramah" bind:value={searchPenceramah} />
+			</div>
+			<div class="records-pagination">
+				<Select label="Kumpulan per halaman" options={pageSizeOptions} bind:value={recordsPerPage} />
+				<div class="pagination-meta">
+					<span class="pagination-info">
+						{#if recordGroups.length > 0}
+							Paparan {recordsStart}-{recordsEnd} daripada {recordGroups.length} kumpulan
+						{:else}
+							Paparan 0 kumpulan
+						{/if}
+					</span>
+					<div class="pagination-actions">
+						<button type="button" class="pagination-btn" onclick={() => currentPage = Math.max(1, currentPage - 1)} disabled={currentPage <= 1}>Sebelum</button>
+						<span class="pagination-page">Halaman {currentPage} / {totalPages}</span>
+						<button type="button" class="pagination-btn" onclick={() => currentPage = Math.min(totalPages, currentPage + 1)} disabled={currentPage >= totalPages}>Seterusnya</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		{#if recordGroups.length > 0}
+			<div class="records-groups">
+				{#each paginatedGroups as group}
+					<div class="record-group">
+						<button type="button" class="record-toggle" aria-expanded={openGroups.has(group.key)} onclick={() => toggleGroup(group.key)}>
+							<div class="record-main">
+								<span class="record-name">{group.nama_penilai}</span>
+								<span class="record-meta">{group.tarikh_penilaian} &bull; {group.items.length} penilaian</span>
+							</div>
+							<span class="record-caret">{openGroups.has(group.key) ? '-' : '+'}</span>
+						</button>
+
+						{#if openGroups.has(group.key)}
+							<div class="record-details">
+								<div class="table-wrapper record-table">
+									<table>
+										<thead>
+											<tr>
+												<th>Tarikh</th>
+												<th>Penceramah</th>
+												<th>Jenis Kuliah</th>
+												<th>Q1</th>
+												<th>Q2</th>
+												<th>Q3</th>
+												<th>Q4</th>
+												<th class="action-col">Tindakan</th>
+											</tr>
+										</thead>
+										<tbody>
+											{#each group.items as evaluation}
+												<tr>
+													<td>{evaluation.tarikh_penilaian}</td>
+													<td>{evaluation.lecturer?.nama || '-'}</td>
+													<td>{evaluation.session?.jenis_kuliah || '-'}</td>
+													<td>{evaluation.q1_tajuk}</td>
+													<td>{evaluation.q2_ilmu}</td>
+													<td>{evaluation.q3_penyampaian}</td>
+													<td>{evaluation.q4_masa}</td>
+													<td class="action-col">
+														{#if deleteConfirmId === evaluation.id}
+															<div class="delete-confirm">
+																<form method="POST" action="?/deleteEvaluation" use:enhance={() => {
+																	return async ({ update }) => {
+																		deleteConfirmId = null;
+																		await update();
+																	};
+																}}>
+																	<input type="hidden" name="id" value={evaluation.id} />
+																	<button type="submit" class="btn-confirm-delete">Pasti?</button>
+																</form>
+																<button class="btn-cancel" onclick={() => deleteConfirmId = null}>Batal</button>
+															</div>
+														{:else}
+															<button class="btn-delete" onclick={() => deleteConfirmId = evaluation.id}>🗑️</button>
+														{/if}
+													</td>
+												</tr>
+											{/each}
+										</tbody>
+									</table>
+								</div>
+							</div>
+						{/if}
+					</div>
+				{/each}
 			</div>
 		{:else}
 			<p class="no-data">Tiada rekod penilaian</p>
@@ -726,6 +880,163 @@
 		font-size: 1rem;
 		color: #333;
 		margin-bottom: 1rem;
+	}
+
+	/* Records Controls */
+	.records-controls {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 1rem;
+		margin-bottom: 1rem;
+		padding-bottom: 1rem;
+		border-bottom: 1px solid #eee;
+	}
+
+	.records-filters {
+		display: flex;
+		gap: 1rem;
+		flex: 1;
+		min-width: 200px;
+	}
+
+	.records-filters :global(.input-group) {
+		margin-bottom: 0;
+		flex: 1;
+		min-width: 150px;
+	}
+
+	.records-pagination {
+		display: flex;
+		gap: 1rem;
+		align-items: flex-end;
+		flex-wrap: wrap;
+	}
+
+	.records-pagination :global(.select-group) {
+		margin-bottom: 0;
+		min-width: 140px;
+	}
+
+	.pagination-meta {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.pagination-info {
+		font-size: 0.85rem;
+		color: #666;
+	}
+
+	.pagination-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.pagination-btn {
+		padding: 0.4rem 0.75rem;
+		border: 1px solid #ddd;
+		border-radius: 0.375rem;
+		background: white;
+		font-size: 0.85rem;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.pagination-btn:hover:not(:disabled) {
+		background: #f5f5f5;
+		border-color: #1a5f2a;
+	}
+
+	.pagination-btn:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.pagination-page {
+		font-size: 0.85rem;
+		color: #333;
+		min-width: 100px;
+		text-align: center;
+	}
+
+	/* Record Groups */
+	.records-groups {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.record-group {
+		border: 1px solid #e0e0e0;
+		border-radius: 0.5rem;
+		overflow: hidden;
+	}
+
+	.record-toggle {
+		width: 100%;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 0.875rem 1rem;
+		background: #f9f9f9;
+		border: none;
+		cursor: pointer;
+		text-align: left;
+		transition: background 0.2s ease;
+	}
+
+	.record-toggle:hover {
+		background: #f0f0f0;
+	}
+
+	.record-toggle[aria-expanded="true"] {
+		background: #e8f5e9;
+		border-bottom: 1px solid #e0e0e0;
+	}
+
+	.record-main {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+
+	.record-name {
+		font-weight: 600;
+		color: #333;
+		font-size: 0.95rem;
+	}
+
+	.record-meta {
+		font-size: 0.8rem;
+		color: #666;
+	}
+
+	.record-caret {
+		font-size: 1.25rem;
+		font-weight: bold;
+		color: #666;
+		width: 24px;
+		text-align: center;
+	}
+
+	.record-details {
+		padding: 1rem;
+		background: white;
+	}
+
+	.record-table {
+		margin: 0;
+	}
+
+	.record-table table {
+		font-size: 0.85rem;
+	}
+
+	.record-table th,
+	.record-table td {
+		padding: 0.5rem 0.75rem;
 	}
 
 	.table-wrapper {

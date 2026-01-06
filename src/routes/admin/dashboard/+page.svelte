@@ -148,9 +148,21 @@
 				<span class="link-icon">📈</span>
 				<span>Laporan Penilaian</span>
 			</a>
+			<a href="/admin/perbandingan" class="quick-link">
+				<span class="link-icon">⚖️</span>
+				<span>Perbandingan Penceramah</span>
+			</a>
 			<a href="/admin/komen" class="quick-link">
 				<span class="link-icon">💬</span>
 				<span>Komen & Cadangan</span>
+			</a>
+			<a href="/admin/qrcode" class="quick-link">
+				<span class="link-icon">📱</span>
+				<span>QR Code Borang</span>
+			</a>
+			<a href="/admin/tetapan" class="quick-link">
+				<span class="link-icon">⚙️</span>
+				<span>Tetapan Sistem</span>
 			</a>
 		</div>
 	</div>
