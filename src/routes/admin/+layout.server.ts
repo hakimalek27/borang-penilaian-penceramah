@@ -1,6 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 import { createClient } from '$lib/server/supabase';
+import { query } from '$lib/server/db';
 
 export const load: LayoutServerLoad = async ({ cookies, url }) => {
 	// Skip auth check for login page
@@ -16,21 +17,26 @@ export const load: LayoutServerLoad = async ({ cookies, url }) => {
 		throw redirect(303, '/admin/login');
 	}
 
-	// Verify user is admin
-	const { data: adminData, error: adminError } = await supabase
-		.from('admins')
-		.select('id, email')
-		.eq('id', session.user.id)
-		.single();
+	try {
+		const result = await query(
+			'SELECT id, email FROM admins WHERE id = $1 LIMIT 1',
+			[session.user.id]
+		);
 
-	if (adminError || !adminData) {
-		// Sign out and redirect if not admin
+		const adminData = result.rows[0];
+
+		if (!adminData) {
+			await supabase.auth.signOut();
+			throw redirect(303, '/admin/login');
+		}
+
+		return {
+			session,
+			admin: adminData
+		};
+	} catch (error) {
+		console.error('Error checking admin:', error);
 		await supabase.auth.signOut();
 		throw redirect(303, '/admin/login');
 	}
-
-	return {
-		session,
-		admin: adminData
-	};
 };

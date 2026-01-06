@@ -1,6 +1,7 @@
 import { redirect, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { createClient } from '$lib/server/supabase';
+import { query } from '$lib/server/db';
 
 export const load: PageServerLoad = async ({ cookies }) => {
 	const supabase = createClient(cookies);
@@ -31,21 +32,28 @@ export const actions: Actions = {
 			password
 		});
 
-		if (error) {
+		if (error || !data?.user?.id) {
 			console.error('Auth error:', error);
 			return fail(401, { error: 'Pengesahan gagal. Sila semak email dan kata laluan.' });
 		}
 
-		// Check if user is admin
-		const { data: adminData, error: adminError } = await supabase
-			.from('admins')
-			.select('id')
-			.eq('id', data.user.id)
-			.single();
+		// Check if user is admin (local DB)
+		try {
+			const result = await query(
+				'SELECT id FROM admins WHERE id = $1 LIMIT 1',
+				[data.user.id]
+			);
 
-		if (adminError || !adminData) {
+			const adminData = result.rows[0];
+
+			if (!adminData) {
+				await supabase.auth.signOut();
+				return fail(403, { error: 'Akses tidak dibenarkan. Anda bukan admin.' });
+			}
+		} catch (err) {
+			console.error('DB error:', err);
 			await supabase.auth.signOut();
-			return fail(403, { error: 'Akses tidak dibenarkan. Anda bukan admin.' });
+			return fail(500, { error: 'Ralat pelayan. Sila cuba lagi.' });
 		}
 
 		throw redirect(303, '/admin/dashboard');
