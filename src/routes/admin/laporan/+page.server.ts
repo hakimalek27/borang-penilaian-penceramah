@@ -1,12 +1,10 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { createClient } from '$lib/server/supabase';
+import { query } from '$lib/server/db';
 import { calculateLecturerScores } from '$lib/utils/calculations';
 import type { Evaluation } from '$lib/types/database';
 
-export const load: PageServerLoad = async ({ cookies, url }) => {
-	const supabase = createClient(cookies);
-
+export const load: PageServerLoad = async ({ url }) => {
 	// Get filter params - date range based
 	const dateFrom = url.searchParams.get('from') || null;
 	const dateTo = url.searchParams.get('to') || null;
@@ -14,35 +12,47 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
 	const lecturerId = url.searchParams.get('lecturer') || null;
 	const lectureType = url.searchParams.get('type') as 'Subuh' | 'Maghrib' | 'Tazkirah Jumaat' | null;
 
-	// Build query for evaluations
-	let query = supabase
-		.from('evaluations')
-		.select(`
-			*,
-			session:lecture_sessions(id, minggu, hari, jenis_kuliah),
-			lecturer:lecturers(id, nama)
-		`);
+	// Build query for evaluations with joins
+	let evalSql = `
+		SELECT e.*,
+			row_to_json(s) AS session,
+			row_to_json(l) AS lecturer
+		FROM evaluations e
+		LEFT JOIN lecture_sessions s ON s.id = e.session_id
+		LEFT JOIN lecturers l ON l.id = e.lecturer_id
+		WHERE 1=1
+	`;
+	const evalParams: unknown[] = [];
+	let paramIndex = 1;
 
-	// Apply date range filter if provided
 	if (dateFrom) {
-		query = query.gte('tarikh_penilaian', dateFrom);
+		evalSql += ` AND e.tarikh_penilaian >= $${paramIndex}`;
+		evalParams.push(dateFrom);
+		paramIndex++;
 	}
 	if (dateTo) {
-		query = query.lte('tarikh_penilaian', dateTo);
+		evalSql += ` AND e.tarikh_penilaian <= $${paramIndex}`;
+		evalParams.push(dateTo);
+		paramIndex++;
 	}
-
 	if (lecturerId) {
-		query = query.eq('lecturer_id', lecturerId);
+		evalSql += ` AND e.lecturer_id = $${paramIndex}`;
+		evalParams.push(lecturerId);
+		paramIndex++;
 	}
 
-	const { data: evaluations, error } = await query.order('tarikh_penilaian', { ascending: false });
+	evalSql += ` ORDER BY e.tarikh_penilaian DESC`;
 
-	if (error) {
+	let evaluations: Evaluation[] = [];
+	try {
+		const evalResult = await query(evalSql, evalParams);
+		evaluations = evalResult.rows as Evaluation[];
+	} catch (error) {
 		console.error('Error fetching evaluations:', error);
 	}
 
-	// Filter by week and lecture type
-	let filteredEvaluations = (evaluations || []) as Evaluation[];
+	// Filter by week and lecture type (client-side filter for joined data)
+	let filteredEvaluations = evaluations;
 
 	if (week) {
 		filteredEvaluations = filteredEvaluations.filter(e => e.session?.minggu === week);
@@ -53,21 +63,33 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
 	}
 
 	// Get all lecturers for filter dropdown
-	const { data: lecturers } = await supabase
-		.from('lecturers')
-		.select('id, nama, gambar_url')
-		.order('nama');
+	let lecturers: { id: string; nama: string; gambar_url: string | null }[] = [];
+	try {
+		const lecturersResult = await query(`
+			SELECT id, nama, gambar_url FROM lecturers ORDER BY nama
+		`);
+		lecturers = lecturersResult.rows;
+	} catch (error) {
+		console.error('Error fetching lecturers:', error);
+	}
 
-	// Get lecturer sessions/schedule for individual report (all active sessions)
-	const { data: lecturerSessions } = await supabase
-		.from('lecture_sessions')
-		.select('lecturer_id, minggu, hari, jenis_kuliah')
-		.eq('is_active', true)
-		.order('minggu', { ascending: true });
+	// Get lecturer sessions/schedule for individual report
+	let lecturerSessions: { lecturer_id: string; minggu: number; hari: string; jenis_kuliah: string }[] = [];
+	try {
+		const sessionsResult = await query(`
+			SELECT lecturer_id, minggu, hari, jenis_kuliah
+			FROM lecture_sessions
+			WHERE is_active = true
+			ORDER BY minggu ASC
+		`);
+		lecturerSessions = sessionsResult.rows;
+	} catch (error) {
+		console.error('Error fetching sessions:', error);
+	}
 
 	// Create lecturer names map
 	const lecturerNames: Record<string, string> = {};
-	for (const l of lecturers || []) {
+	for (const l of lecturers) {
 		lecturerNames[l.id] = l.nama;
 	}
 
@@ -77,8 +99,8 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
 	return {
 		evaluations: filteredEvaluations,
 		lecturerScores,
-		lecturers: lecturers || [],
-		lecturerSessions: lecturerSessions || [],
+		lecturers,
+		lecturerSessions,
 		filters: {
 			dateFrom,
 			dateTo,
@@ -90,7 +112,7 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
 };
 
 export const actions: Actions = {
-	deleteEvaluation: async ({ request, cookies }) => {
+	deleteEvaluation: async ({ request }) => {
 		const formData = await request.formData();
 		const id = formData.get('id') as string;
 
@@ -98,18 +120,12 @@ export const actions: Actions = {
 			return fail(400, { error: 'ID penilaian diperlukan' });
 		}
 
-		const supabase = createClient(cookies);
-
-		const { error } = await supabase
-			.from('evaluations')
-			.delete()
-			.eq('id', id);
-
-		if (error) {
+		try {
+			await query('DELETE FROM evaluations WHERE id = $1', [id]);
+			return { success: true };
+		} catch (error) {
 			console.error('Error deleting evaluation:', error);
 			return fail(500, { error: 'Ralat semasa memadam penilaian' });
 		}
-
-		return { success: true };
 	}
 };
