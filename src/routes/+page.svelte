@@ -14,6 +14,10 @@
 
 	let { data }: { data: PageData } = $props();
 
+	// Scroll assist state
+	let isAtBottom = $state(false);
+	let submitSectionRef: HTMLElement | null = $state(null);
+
 	// Form state
 	let evaluator: EvaluatorInfoType = $state({
 		nama: '',
@@ -97,7 +101,21 @@
 		}
 	});
 
-	// Check for existing draft on mount
+	// Derived values for floating scroll assist
+	const progressColor = $derived(() => {
+		const progress = formProgress();
+		if (progress < 50) return '#dc3545'; // red
+		if (progress < 100) return '#ffc107'; // yellow
+		return '#28a745'; // green
+	});
+
+	const scrollAssistText = $derived(() => {
+		if (formProgress() >= 100) return 'Sedia hantar';
+		if (isAtBottom) return 'Di bawah';
+		return 'Ke bawah';
+	});
+
+	// Check for existing draft on mount + scroll tracking
 	onMount(() => {
 		if (hasDraft()) {
 			const age = getDraftAge();
@@ -106,7 +124,27 @@
 				showDraftModal = true;
 			}
 		}
+
+		// Scroll tracking for floating button
+		const handleScroll = () => {
+			const scrollTop = window.scrollY;
+			const windowHeight = window.innerHeight;
+			const docHeight = document.documentElement.scrollHeight;
+			// Consider "at bottom" when within 150px of bottom
+			isAtBottom = scrollTop + windowHeight >= docHeight - 150;
+		};
+
+		window.addEventListener('scroll', handleScroll, { passive: true });
+		handleScroll(); // Initial check
+
+		return () => {
+			window.removeEventListener('scroll', handleScroll);
+		};
 	});
+
+	function scrollToSubmit() {
+		submitSectionRef?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+	}
 
 	function restoreDraft() {
 		const draft = loadDraft();
@@ -388,7 +426,7 @@
 		</div>
 
 		<!-- Submit Button -->
-		<div class="submit-section">
+		<div class="submit-section" bind:this={submitSectionRef}>
 			<Button type="submit" size="lg" loading={isSubmitting}>
 				Hantar Penilaian
 			</Button>
@@ -400,6 +438,38 @@
 		</div>
 	</form>
 </main>
+
+<!-- Floating Scroll Assist -->
+<button class="scroll-assist" onclick={scrollToSubmit} aria-label="Scroll ke bahagian hantar">
+	<svg class="progress-ring" viewBox="0 0 44 44">
+		<circle
+			class="progress-ring-bg"
+			cx="22"
+			cy="22"
+			r="18"
+			fill="none"
+			stroke="#e0e0e0"
+			stroke-width="4"
+		/>
+		<circle
+			class="progress-ring-fill"
+			cx="22"
+			cy="22"
+			r="18"
+			fill="none"
+			stroke={progressColor()}
+			stroke-width="4"
+			stroke-linecap="round"
+			stroke-dasharray={113.1}
+			stroke-dashoffset={113.1 - (113.1 * formProgress()) / 100}
+			transform="rotate(-90 22 22)"
+		/>
+	</svg>
+	<span class="scroll-assist-content">
+		<span class="scroll-assist-percent" style="color: {progressColor()}">{Math.round(formProgress())}%</span>
+		<span class="scroll-assist-text">{scrollAssistText()}</span>
+	</span>
+</button>
 
 <style>
 	/* Success Modal */
@@ -711,6 +781,86 @@
 
 		.scale-legend {
 			font-size: 0.75rem;
+		}
+	}
+
+	/* Floating Scroll Assist */
+	.scroll-assist {
+		position: fixed;
+		bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+		right: 1rem;
+		width: 64px;
+		height: 64px;
+		border-radius: 50%;
+		background: white;
+		border: none;
+		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 900;
+		transition: transform 0.2s ease, box-shadow 0.2s ease;
+		touch-action: manipulation;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.scroll-assist:hover {
+		transform: scale(1.05);
+		box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2);
+	}
+
+	.scroll-assist:active {
+		transform: scale(0.95);
+	}
+
+	.progress-ring {
+		position: absolute;
+		width: 100%;
+		height: 100%;
+	}
+
+	.progress-ring-fill {
+		transition: stroke-dashoffset 0.3s ease, stroke 0.3s ease;
+	}
+
+	.scroll-assist-content {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 0;
+		line-height: 1;
+	}
+
+	.scroll-assist-percent {
+		font-size: 0.85rem;
+		font-weight: 700;
+		transition: color 0.3s ease;
+	}
+
+	.scroll-assist-text {
+		font-size: 0.55rem;
+		color: #666;
+		font-weight: 500;
+		white-space: nowrap;
+	}
+
+	/* Hide on desktop - optional, or keep it */
+	@media (min-width: 640px) {
+		.scroll-assist {
+			bottom: 2rem;
+			right: 2rem;
+			width: 72px;
+			height: 72px;
+		}
+
+		.scroll-assist-percent {
+			font-size: 1rem;
+		}
+
+		.scroll-assist-text {
+			font-size: 0.65rem;
 		}
 	}
 </style>
