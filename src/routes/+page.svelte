@@ -931,8 +931,8 @@
 		position: fixed;
 		bottom: calc(18rem + env(safe-area-inset-bottom, 0px));
 		right: 1rem;
-		width: 100px;
-		height: 100px;
+		width: 73px;
+		height: 73px;
 		border-radius: 50%;
 		background: transparent;
 		border: none;
@@ -1001,8 +1001,8 @@
 
 	.scroll-assist-inner {
 		position: absolute;
-		width: 80px;
-		height: 80px;
+		width: 60px;
+		height: 60px;
 		border-radius: 50%;
 		display: flex;
 		flex-direction: column;
@@ -1038,7 +1038,7 @@
 	}
 
 	.scroll-assist-icon {
-		font-size: 1.6rem;
+		font-size: 1.5rem;
 		line-height: 1;
 		animation: icon-pop 0.3s ease;
 	}
@@ -1058,24 +1058,24 @@
 	}
 
 	.scroll-assist-text {
-		font-size: 0.85rem;
+		font-size: 0.55rem;
 		color: #64748b;
-		font-weight: 800;
+		font-weight: 700;
 		white-space: nowrap;
 		text-transform: uppercase;
 		letter-spacing: 0.02em;
 	}
 
 	.scroll-assist-text.guide {
-		font-size: 0.85rem;
-		font-weight: 900;
+		font-size: 0.55rem;
+		font-weight: 700;
 		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 	}
 
 	.scroll-assist-text.complete {
 		color: white;
-		font-size: 0.9rem;
-		font-weight: 900;
+		font-size: 0.6rem;
+		font-weight: 700;
 		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 	}
 
@@ -1098,34 +1098,34 @@
 		.scroll-assist {
 			bottom: 2rem;
 			right: 2rem;
-			width: 110px;
-			height: 110px;
+			width: 80px;
+			height: 80px;
 		}
 
 		.scroll-assist-inner {
-			width: 88px;
-			height: 88px;
+			width: 65px;
+			height: 65px;
 		}
 
 		.scroll-assist-icon {
-			font-size: 1.8rem;
+			font-size: 1.6rem;
 		}
 
 		.scroll-assist-percent {
-			font-size: 1.25rem;
+			font-size: 1rem;
 		}
 
 		.scroll-assist-text {
-			font-size: 0.9rem;
+			font-size: 0.6rem;
 		}
 
 		.scroll-assist-text.guide {
-			font-size: 0.9rem;
+			font-size: 0.6rem;
 		}
 
 		.check-icon {
-			width: 32px;
-			height: 32px;
+			width: 24px;
+			height: 24px;
 		}
 	}
 </style>
