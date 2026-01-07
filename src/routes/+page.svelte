@@ -803,7 +803,7 @@
 	/* Floating Scroll Assist */
 	.scroll-assist {
 		position: fixed;
-		bottom: calc(25rem + env(safe-area-inset-bottom, 0px));
+		bottom: calc(50rem + env(safe-area-inset-bottom, 0px));
 		right: 1rem;
 		width: 68px;
 		height: 68px;
