@@ -50,6 +50,14 @@
 		});
 	});
 
+	// Helper to convert date to string for comparison
+	function toDateString(d: unknown): string {
+		if (!d) return '';
+		if (typeof d === 'string') return d;
+		if (d instanceof Date) return d.toISOString().split('T')[0];
+		return String(d);
+	}
+
 	const recordGroups = $derived.by(() => {
 		const groups = new Map<string, {
 			key: string;
@@ -59,7 +67,7 @@
 		}>();
 
 		for (const evaluation of filteredEvaluations) {
-			const tarikh = evaluation.tarikh_penilaian || '';
+			const tarikh = toDateString(evaluation.tarikh_penilaian);
 			const nama = evaluation.nama_penilai || '';
 			const key = `${nama}__${tarikh}`;
 			const existing = groups.get(key);
@@ -80,10 +88,12 @@
 
 		for (const group of result) {
 			group.items.sort((a, b) => {
-				if (a.tarikh_penilaian === b.tarikh_penilaian) {
+				const tarikhA = toDateString(a.tarikh_penilaian);
+				const tarikhB = toDateString(b.tarikh_penilaian);
+				if (tarikhA === tarikhB) {
 					return (a.lecturer?.nama || '').localeCompare(b.lecturer?.nama || '');
 				}
-				return b.tarikh_penilaian.localeCompare(a.tarikh_penilaian);
+				return tarikhB.localeCompare(tarikhA);
 			});
 		}
 
@@ -684,7 +694,7 @@
 										<tbody>
 											{#each group.items as evaluation}
 												<tr>
-													<td>{evaluation.tarikh_penilaian}</td>
+													<td>{toDateString(evaluation.tarikh_penilaian)}</td>
 													<td>{evaluation.lecturer?.nama || '-'}</td>
 													<td>{evaluation.session?.jenis_kuliah || '-'}</td>
 													<td>{evaluation.q1_tajuk}</td>
