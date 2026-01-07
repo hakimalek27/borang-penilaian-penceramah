@@ -12,6 +12,14 @@
 	let deleteConfirmKomen = $state<string | null>(null);
 	let deleteConfirmCadangan = $state<string | null>(null);
 
+	// Helper to format date properly
+	function formatDate(d: unknown): string {
+		if (!d) return '';
+		if (typeof d === 'string') return d;
+		if (d instanceof Date) return d.toISOString().split('T')[0];
+		return String(d);
+	}
+
 	// Generate period label for display
 	const periodLabel = $derived(() => {
 		if (dateFrom && dateTo) {
@@ -103,7 +111,7 @@
 							<div class="comment-header">
 								<div class="comment-meta">
 									<span class="comment-author">{comment.nama_penilai}</span>
-									<span class="comment-date">{comment.tarikh}</span>
+									<span class="comment-date">{formatDate(comment.tarikh)}</span>
 								</div>
 								{#if deleteConfirmKomen === komenKey}
 									<div class="delete-confirm">
@@ -143,7 +151,7 @@
 							<div class="suggestion-header">
 								<div class="suggestion-meta">
 									<span class="suggestion-author">{suggestion.nama_penilai}</span>
-									<span class="suggestion-date">{suggestion.tarikh}</span>
+									<span class="suggestion-date">{formatDate(suggestion.tarikh)}</span>
 								</div>
 								{#if deleteConfirmCadangan === cadanganKey}
 									<div class="delete-confirm">

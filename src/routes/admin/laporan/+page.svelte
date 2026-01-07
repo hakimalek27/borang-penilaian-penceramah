@@ -670,7 +670,7 @@
 						<button type="button" class="record-toggle" aria-expanded={openGroups.has(group.key)} onclick={() => toggleGroup(group.key)}>
 							<div class="record-main">
 								<span class="record-name">{group.nama_penilai}</span>
-								<span class="record-meta">{group.tarikh_penilaian} &bull; {group.items.length} penilaian</span>
+								<span class="record-meta">{toDateString(group.tarikh_penilaian)} &bull; {group.items.length} penilaian</span>
 							</div>
 							<span class="record-caret">{openGroups.has(group.key) ? '-' : '+'}</span>
 						</button>
