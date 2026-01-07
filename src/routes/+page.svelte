@@ -931,8 +931,8 @@
 		position: fixed;
 		bottom: calc(18rem + env(safe-area-inset-bottom, 0px));
 		right: 1rem;
-		width: 68px;
-		height: 68px;
+		width: 85px;
+		height: 85px;
 		border-radius: 50%;
 		background: transparent;
 		border: none;
@@ -1001,8 +1001,8 @@
 
 	.scroll-assist-inner {
 		position: absolute;
-		width: 52px;
-		height: 52px;
+		width: 66px;
+		height: 66px;
 		border-radius: 50%;
 		display: flex;
 		flex-direction: column;
@@ -1058,24 +1058,24 @@
 	}
 
 	.scroll-assist-text {
-		font-size: 0.6rem;
+		font-size: 0.7rem;
 		color: #64748b;
-		font-weight: 600;
+		font-weight: 700;
 		white-space: nowrap;
 		text-transform: uppercase;
 		letter-spacing: 0.02em;
 	}
 
 	.scroll-assist-text.guide {
-		font-size: 0.55rem;
-		font-weight: 700;
+		font-size: 0.7rem;
+		font-weight: 800;
 		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 	}
 
 	.scroll-assist-text.complete {
 		color: white;
-		font-size: 0.65rem;
-		font-weight: 700;
+		font-size: 0.75rem;
+		font-weight: 800;
 		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 	}
 
@@ -1098,13 +1098,13 @@
 		.scroll-assist {
 			bottom: 2rem;
 			right: 2rem;
-			width: 76px;
-			height: 76px;
+			width: 90px;
+			height: 90px;
 		}
 
 		.scroll-assist-inner {
-			width: 58px;
-			height: 58px;
+			width: 70px;
+			height: 70px;
 		}
 
 		.scroll-assist-percent {
@@ -1112,12 +1112,16 @@
 		}
 
 		.scroll-assist-text {
-			font-size: 0.65rem;
+			font-size: 0.75rem;
+		}
+
+		.scroll-assist-text.guide {
+			font-size: 0.75rem;
 		}
 
 		.check-icon {
-			width: 26px;
-			height: 26px;
+			width: 28px;
+			height: 28px;
 		}
 	}
 </style>
