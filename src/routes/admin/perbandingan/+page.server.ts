@@ -13,7 +13,7 @@ export const load: PageServerLoad = async ({ url }) => {
 	let lecturers: { id: string; nama: string }[] = [];
 	try {
 		const lecturersResult = await query(`
-			SELECT id, nama FROM lecturers WHERE aktif = true ORDER BY nama
+			SELECT id, nama FROM lecturers ORDER BY nama
 		`);
 		lecturers = lecturersResult.rows;
 	} catch (error) {
