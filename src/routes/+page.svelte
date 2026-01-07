@@ -18,6 +18,15 @@
 	let isAtBottom = $state(false);
 	let submitSectionRef: HTMLElement | null = $state(null);
 
+	// Section refs for smart scroll
+	let evaluatorSectionRef: HTMLElement | null = $state(null);
+	let lecturerSectionRef: HTMLElement | null = $state(null);
+
+	// Idle detection for pulse animation
+	let lastInteractionTime = $state(Date.now());
+	let isIdle = $state(false);
+	const IDLE_THRESHOLD = 8000; // 8 seconds
+
 	// Form state
 	let evaluator: EvaluatorInfoType = $state({
 		nama: '',
@@ -109,13 +118,65 @@
 		return '#28a745'; // green
 	});
 
-	const scrollAssistText = $derived(() => {
-		if (formProgress() >= 100) return 'Sedia hantar';
-		if (isAtBottom) return 'Di bawah';
-		return 'Ke bawah';
+	// Smart Guide Logic - determines what section needs attention
+	interface SmartGuide {
+		icon: string;
+		text: string;
+		target: 'evaluator' | 'lecturer' | 'rating' | 'submit';
+		sessionId?: string; // For scrolling to specific lecturer card
+	}
+
+	const smartGuide = $derived((): SmartGuide => {
+		// Check evaluator info first
+		const evaluatorComplete = evaluator.nama.trim() !== '' &&
+			evaluator.umur > 0 &&
+			evaluator.alamat.trim() !== '' &&
+			evaluator.tarikh.trim() !== '';
+
+		if (!evaluatorComplete) {
+			// Determine which field is missing
+			if (!evaluator.nama.trim()) {
+				return { icon: '📝', text: 'Isi Nama', target: 'evaluator' };
+			}
+			if (evaluator.umur <= 0) {
+				return { icon: '📝', text: 'Isi Umur', target: 'evaluator' };
+			}
+			if (!evaluator.alamat.trim()) {
+				return { icon: '📝', text: 'Isi Alamat', target: 'evaluator' };
+			}
+			return { icon: '📝', text: 'Isi Tarikh', target: 'evaluator' };
+		}
+
+		// Check if any lecturer selected
+		if (expandedLecturers.size === 0) {
+			return { icon: '👤', text: 'Pilih Ustaz', target: 'lecturer' };
+		}
+
+		// Check if all selected lecturers have complete ratings
+		for (const sessionId of expandedLecturers) {
+			const ratings = lecturerRatings[sessionId]?.ratings;
+			if (!ratings) {
+				return { icon: '⭐', text: 'Beri Skor', target: 'rating', sessionId };
+			}
+			if (ratings.q1_tajuk === null) {
+				return { icon: '⭐', text: 'Skor Tajuk', target: 'rating', sessionId };
+			}
+			if (ratings.q2_ilmu === null) {
+				return { icon: '⭐', text: 'Skor Ilmu', target: 'rating', sessionId };
+			}
+			if (ratings.q3_penyampaian === null) {
+				return { icon: '⭐', text: 'Skor Sampaian', target: 'rating', sessionId };
+			}
+			if (ratings.q4_masa === null) {
+				return { icon: '⭐', text: 'Skor Masa', target: 'rating', sessionId };
+			}
+		}
+
+		// All complete - ready to submit
+		return { icon: '✅', text: 'Hantar!', target: 'submit' };
 	});
 
-	// Check for existing draft on mount + scroll tracking
+	// Check for existing draft on mount + scroll tracking + idle detection
 	onMount(() => {
 		if (hasDraft()) {
 			const age = getDraftAge();
@@ -132,18 +193,79 @@
 			const docHeight = document.documentElement.scrollHeight;
 			// Consider "at bottom" when within 150px of bottom
 			isAtBottom = scrollTop + windowHeight >= docHeight - 150;
+			// Reset idle on scroll
+			resetIdleTimer();
 		};
 
+		// Idle detection - check every second
+		const idleInterval = setInterval(() => {
+			const timeSinceInteraction = Date.now() - lastInteractionTime;
+			// Only show idle pulse if form is not complete
+			if (timeSinceInteraction >= IDLE_THRESHOLD && formProgress() < 100) {
+				isIdle = true;
+			}
+		}, 1000);
+
+		// Reset idle on any user interaction
+		const resetIdleOnInteraction = () => resetIdleTimer();
+
 		window.addEventListener('scroll', handleScroll, { passive: true });
+		window.addEventListener('click', resetIdleOnInteraction, { passive: true });
+		window.addEventListener('touchstart', resetIdleOnInteraction, { passive: true });
+		window.addEventListener('keydown', resetIdleOnInteraction, { passive: true });
+
 		handleScroll(); // Initial check
 
 		return () => {
 			window.removeEventListener('scroll', handleScroll);
+			window.removeEventListener('click', resetIdleOnInteraction);
+			window.removeEventListener('touchstart', resetIdleOnInteraction);
+			window.removeEventListener('keydown', resetIdleOnInteraction);
+			clearInterval(idleInterval);
 		};
 	});
 
-	function scrollToSubmit() {
-		submitSectionRef?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+	// Reset idle timer
+	function resetIdleTimer() {
+		lastInteractionTime = Date.now();
+		isIdle = false;
+	}
+
+	// Smart scroll to incomplete section
+	function smartScrollToSection() {
+		const guide = smartGuide();
+		resetIdleTimer();
+
+		switch (guide.target) {
+			case 'evaluator':
+				evaluatorSectionRef?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+				// Focus on first empty input after scroll
+				setTimeout(() => {
+					const firstInput = evaluatorSectionRef?.querySelector('input:not([type="date"]), textarea');
+					if (firstInput instanceof HTMLElement) {
+						firstInput.focus();
+					}
+				}, 500);
+				break;
+			case 'lecturer':
+				lecturerSectionRef?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				break;
+			case 'rating':
+				// Scroll to the specific lecturer card that needs rating
+				if (guide.sessionId) {
+					const lecturerCard = document.querySelector(`[data-session-id="${guide.sessionId}"]`);
+					if (lecturerCard) {
+						lecturerCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+						// Highlight the card briefly
+						lecturerCard.classList.add('highlight-attention');
+						setTimeout(() => lecturerCard.classList.remove('highlight-attention'), 2000);
+					}
+				}
+				break;
+			case 'submit':
+				submitSectionRef?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+				break;
+		}
 	}
 
 	function restoreDraft() {
@@ -369,9 +491,9 @@
 
 	<form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
 		<!-- Bahagian A: Maklumat Penilai -->
-		<section class="section">
+		<section class="section" bind:this={evaluatorSectionRef}>
 			<h2 class="section-title">Bahagian A: Maklumat Penilai</h2>
-			<EvaluatorInfo 
+			<EvaluatorInfo
 				bind:nama={evaluator.nama}
 				bind:umur={evaluator.umur}
 				bind:alamat={evaluator.alamat}
@@ -381,23 +503,25 @@
 		</section>
 
 		<!-- Bahagian B: Pilihan Penceramah -->
-		<section class="section">
+		<section class="section" bind:this={lecturerSectionRef}>
 			<h2 class="section-title">Bahagian B: Penilaian Penceramah</h2>
 			<p class="section-desc">Klik pada kad penceramah untuk memberi penilaian.</p>
-			
+
 			{#each [1, 2, 3, 4, 5] as week}
 				<div class="week-section">
 					<h3 class="week-title">Minggu {week}</h3>
 					{#if data.sessionsByWeek[week]?.length > 0}
 						<div class="lecturer-grid">
 							{#each data.sessionsByWeek[week] as session}
-								<LecturerCard 
-									{session}
-									isExpanded={expandedLecturers.has(session.id)}
-									ratings={lecturerRatings[session.id]?.ratings}
-									onToggle={() => toggleLecturer(session.id)}
-									onRatingChange={(q, v) => updateRating(session.id, q, v)}
-								/>
+								<div data-session-id={session.id}>
+									<LecturerCard
+										{session}
+										isExpanded={expandedLecturers.has(session.id)}
+										ratings={lecturerRatings[session.id]?.ratings}
+										onToggle={() => toggleLecturer(session.id)}
+										onRatingChange={(q, v) => updateRating(session.id, q, v)}
+									/>
+								</div>
 							{/each}
 						</div>
 					{:else}
@@ -439,12 +563,13 @@
 	</form>
 </main>
 
-<!-- Floating Scroll Assist -->
+<!-- Floating Smart Guide -->
 <button
 	class="scroll-assist"
 	class:complete={formProgress() >= 100}
-	onclick={scrollToSubmit}
-	aria-label="Scroll ke bahagian hantar"
+	class:idle-pulse={isIdle && formProgress() < 100}
+	onclick={smartScrollToSection}
+	aria-label="Panduan ke bahagian seterusnya"
 >
 	<!-- Progress Ring -->
 	<svg class="progress-ring" viewBox="0 0 100 100">
@@ -472,7 +597,7 @@
 		/>
 	</svg>
 
-	<!-- Inner Content -->
+	<!-- Inner Content with Smart Guide -->
 	<span class="scroll-assist-inner" style="background: {formProgress() >= 100 ? '#22c55e' : 'white'}">
 		{#if formProgress() >= 100}
 			<!-- Checkmark Icon when complete -->
@@ -481,8 +606,9 @@
 			</svg>
 			<span class="scroll-assist-text complete">Hantar!</span>
 		{:else}
-			<span class="scroll-assist-percent" style="color: {progressColor()}">{Math.round(formProgress())}%</span>
-			<span class="scroll-assist-text">{scrollAssistText()}</span>
+			<!-- Smart Guide Icon & Text -->
+			<span class="scroll-assist-icon">{smartGuide().icon}</span>
+			<span class="scroll-assist-text guide" style="color: {progressColor()}">{smartGuide().text}</span>
 		{/if}
 	</span>
 </button>
@@ -834,6 +960,22 @@
 		animation: pulse-glow 1.5s ease-in-out infinite;
 	}
 
+	/* Idle pulse animation - bounces to get attention */
+	.scroll-assist.idle-pulse {
+		animation: idle-bounce 1s ease-in-out infinite;
+	}
+
+	@keyframes idle-bounce {
+		0%, 100% {
+			transform: scale(1) translateY(0);
+			filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.2));
+		}
+		50% {
+			transform: scale(1.1) translateY(-8px);
+			filter: drop-shadow(0 8px 25px rgba(0, 0, 0, 0.3));
+		}
+	}
+
 	@keyframes pulse-glow {
 		0%, 100% {
 			filter: drop-shadow(0 4px 12px rgba(34, 197, 94, 0.4));
@@ -895,6 +1037,18 @@
 		}
 	}
 
+	.scroll-assist-icon {
+		font-size: 1.25rem;
+		line-height: 1;
+		animation: icon-pop 0.3s ease;
+	}
+
+	@keyframes icon-pop {
+		0% { transform: scale(0.8); opacity: 0.5; }
+		50% { transform: scale(1.1); }
+		100% { transform: scale(1); opacity: 1; }
+	}
+
 	.scroll-assist-percent {
 		font-size: 1rem;
 		font-weight: 800;
@@ -912,11 +1066,31 @@
 		letter-spacing: 0.02em;
 	}
 
+	.scroll-assist-text.guide {
+		font-size: 0.55rem;
+		font-weight: 700;
+		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+	}
+
 	.scroll-assist-text.complete {
 		color: white;
 		font-size: 0.65rem;
 		font-weight: 700;
 		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+	}
+
+	/* Highlight attention animation for lecturer cards */
+	:global([data-session-id].highlight-attention) {
+		animation: highlight-pulse 0.5s ease-in-out 3;
+	}
+
+	@keyframes highlight-pulse {
+		0%, 100% {
+			box-shadow: 0 0 0 0 rgba(26, 95, 42, 0);
+		}
+		50% {
+			box-shadow: 0 0 0 8px rgba(26, 95, 42, 0.3);
+		}
 	}
 
 	/* Desktop styles */
