@@ -440,34 +440,50 @@
 </main>
 
 <!-- Floating Scroll Assist -->
-<button class="scroll-assist" onclick={scrollToSubmit} aria-label="Scroll ke bahagian hantar">
-	<svg class="progress-ring" viewBox="0 0 44 44">
+<button
+	class="scroll-assist"
+	class:complete={formProgress() >= 100}
+	onclick={scrollToSubmit}
+	aria-label="Scroll ke bahagian hantar"
+>
+	<!-- Progress Ring -->
+	<svg class="progress-ring" viewBox="0 0 100 100">
 		<circle
 			class="progress-ring-bg"
-			cx="22"
-			cy="22"
-			r="18"
+			cx="50"
+			cy="50"
+			r="45"
 			fill="none"
-			stroke="#e0e0e0"
-			stroke-width="4"
+			stroke="#e5e7eb"
+			stroke-width="6"
 		/>
 		<circle
 			class="progress-ring-fill"
-			cx="22"
-			cy="22"
-			r="18"
+			cx="50"
+			cy="50"
+			r="45"
 			fill="none"
 			stroke={progressColor()}
-			stroke-width="4"
+			stroke-width="6"
 			stroke-linecap="round"
-			stroke-dasharray={113.1}
-			stroke-dashoffset={113.1 - (113.1 * formProgress()) / 100}
-			transform="rotate(-90 22 22)"
+			stroke-dasharray={283}
+			stroke-dashoffset={283 - (283 * formProgress()) / 100}
+			transform="rotate(-90 50 50)"
 		/>
 	</svg>
-	<span class="scroll-assist-content">
-		<span class="scroll-assist-percent" style="color: {progressColor()}">{Math.round(formProgress())}%</span>
-		<span class="scroll-assist-text">{scrollAssistText()}</span>
+
+	<!-- Inner Content -->
+	<span class="scroll-assist-inner" style="background: {formProgress() >= 100 ? '#22c55e' : 'white'}">
+		{#if formProgress() >= 100}
+			<!-- Checkmark Icon when complete -->
+			<svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+				<polyline points="20 6 9 17 4 12"></polyline>
+			</svg>
+			<span class="scroll-assist-text complete">Hantar!</span>
+		{:else}
+			<span class="scroll-assist-percent" style="color: {progressColor()}">{Math.round(formProgress())}%</span>
+			<span class="scroll-assist-text">{scrollAssistText()}</span>
+		{/if}
 	</span>
 </button>
 
@@ -789,29 +805,42 @@
 		position: fixed;
 		bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
 		right: 1rem;
-		width: 64px;
-		height: 64px;
+		width: 68px;
+		height: 68px;
 		border-radius: 50%;
-		background: white;
+		background: transparent;
 		border: none;
-		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
 		cursor: pointer;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		z-index: 900;
-		transition: transform 0.2s ease, box-shadow 0.2s ease;
+		transition: transform 0.2s ease, filter 0.2s ease;
 		touch-action: manipulation;
 		-webkit-tap-highlight-color: transparent;
+		filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.2));
 	}
 
 	.scroll-assist:hover {
-		transform: scale(1.05);
-		box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2);
+		transform: scale(1.08);
+		filter: drop-shadow(0 6px 20px rgba(0, 0, 0, 0.25));
 	}
 
 	.scroll-assist:active {
 		transform: scale(0.95);
+	}
+
+	.scroll-assist.complete {
+		animation: pulse-glow 1.5s ease-in-out infinite;
+	}
+
+	@keyframes pulse-glow {
+		0%, 100% {
+			filter: drop-shadow(0 4px 12px rgba(34, 197, 94, 0.4));
+		}
+		50% {
+			filter: drop-shadow(0 4px 25px rgba(34, 197, 94, 0.7));
+		}
 	}
 
 	.progress-ring {
@@ -820,47 +849,101 @@
 		height: 100%;
 	}
 
-	.progress-ring-fill {
-		transition: stroke-dashoffset 0.3s ease, stroke 0.3s ease;
+	.progress-ring-bg {
+		opacity: 0.3;
 	}
 
-	.scroll-assist-content {
+	.progress-ring-fill {
+		transition: stroke-dashoffset 0.4s ease, stroke 0.3s ease;
+	}
+
+	.scroll-assist-inner {
+		position: absolute;
+		width: 52px;
+		height: 52px;
+		border-radius: 50%;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		gap: 0;
-		line-height: 1;
+		gap: 2px;
+		transition: background 0.3s ease, transform 0.3s ease;
+		box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+	}
+
+	.scroll-assist.complete .scroll-assist-inner {
+		transform: scale(1.05);
+	}
+
+	.check-icon {
+		width: 22px;
+		height: 22px;
+		animation: check-pop 0.4s ease;
+	}
+
+	@keyframes check-pop {
+		0% {
+			transform: scale(0);
+			opacity: 0;
+		}
+		50% {
+			transform: scale(1.2);
+		}
+		100% {
+			transform: scale(1);
+			opacity: 1;
+		}
 	}
 
 	.scroll-assist-percent {
-		font-size: 0.85rem;
-		font-weight: 700;
+		font-size: 1rem;
+		font-weight: 800;
+		line-height: 1;
 		transition: color 0.3s ease;
+		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 	}
 
 	.scroll-assist-text {
-		font-size: 0.55rem;
-		color: #666;
-		font-weight: 500;
+		font-size: 0.6rem;
+		color: #64748b;
+		font-weight: 600;
 		white-space: nowrap;
+		text-transform: uppercase;
+		letter-spacing: 0.02em;
 	}
 
-	/* Hide on desktop - optional, or keep it */
+	.scroll-assist-text.complete {
+		color: white;
+		font-size: 0.65rem;
+		font-weight: 700;
+		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+	}
+
+	/* Desktop styles */
 	@media (min-width: 640px) {
 		.scroll-assist {
 			bottom: 2rem;
 			right: 2rem;
-			width: 72px;
-			height: 72px;
+			width: 76px;
+			height: 76px;
+		}
+
+		.scroll-assist-inner {
+			width: 58px;
+			height: 58px;
 		}
 
 		.scroll-assist-percent {
-			font-size: 1rem;
+			font-size: 1.15rem;
 		}
 
 		.scroll-assist-text {
 			font-size: 0.65rem;
+		}
+
+		.check-icon {
+			width: 26px;
+			height: 26px;
 		}
 	}
 </style>
