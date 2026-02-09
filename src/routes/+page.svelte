@@ -1058,16 +1058,20 @@
 	}
 
 	.scroll-assist-text {
-		font-size: 0.85rem;
+		font-size: 0.65rem;
 		color: #64748b;
 		font-weight: 800;
-		white-space: nowrap;
+		white-space: normal;
+		text-align: center;
 		text-transform: uppercase;
 		letter-spacing: 0.02em;
+		max-width: 68px;
+		line-height: 1.15;
+		overflow: hidden;
 	}
 
 	.scroll-assist-text.guide {
-		font-size: 0.85rem;
+		font-size: 0.65rem;
 		font-weight: 900;
 		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 	}
@@ -1116,11 +1120,11 @@
 		}
 
 		.scroll-assist-text {
-			font-size: 0.9rem;
+			font-size: 0.7rem;
 		}
 
 		.scroll-assist-text.guide {
-			font-size: 0.9rem;
+			font-size: 0.7rem;
 		}
 
 		.check-icon {
