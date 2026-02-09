@@ -1,6 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { createClient } from '$lib/server/supabase';
+import { query } from '$lib/server/db';
 
 // Urutan hari dalam minggu
 const dayOrder: Record<string, number> = {
@@ -20,42 +20,36 @@ const lectureTypeOrder: Record<string, number> = {
 	'Maghrib': 3
 };
 
-export const load: PageServerLoad = async ({ cookies }) => {
-	const supabase = createClient(cookies);
+export const load: PageServerLoad = async () => {
+	// Fetch ALL sessions with lecturer info
+	const sessionsResult = await query(`
+		SELECT ls.*, row_to_json(l.*) as lecturer
+		FROM lecture_sessions ls
+		LEFT JOIN lecturers l ON l.id = ls.lecturer_id
+		ORDER BY ls.minggu, ls.hari, ls.jenis_kuliah
+	`);
 
-	// Fetch ALL sessions (no month/year filter)
-	const { data: sessions, error: sessionsError } = await supabase
-		.from('lecture_sessions')
-		.select(`
-			*,
-			lecturer:lecturers(id, nama, gambar_url)
-		`);
-
-	if (sessionsError) {
-		console.error('Error fetching sessions:', sessionsError);
-	}
+	const sessions = sessionsResult.rows.map(row => ({
+		...row,
+		lecturer: row.lecturer?.id ? { id: row.lecturer.id, nama: row.lecturer.nama, gambar_url: row.lecturer.gambar_url } : null
+	}));
 
 	// Sort sessions by minggu, then hari, then jenis_kuliah
-	const sortedSessions = sessions?.sort((a, b) => {
-		// Sort by minggu first
+	const sortedSessions = sessions.sort((a, b) => {
 		if (a.minggu !== b.minggu) {
 			return a.minggu - b.minggu;
 		}
-		// Then by hari (day of week)
 		const dayDiff = (dayOrder[a.hari] || 99) - (dayOrder[b.hari] || 99);
 		if (dayDiff !== 0) {
 			return dayDiff;
 		}
-		// Then by jenis_kuliah
 		return (lectureTypeOrder[a.jenis_kuliah] || 99) - (lectureTypeOrder[b.jenis_kuliah] || 99);
-	}) || [];
+	});
 
 	// Fetch all lecturers for dropdown
-	const { data: lecturers } = await supabase
-		.from('lecturers')
-		.select('id, nama')
-		.order('sort_order', { ascending: true })
-		.order('nama', { ascending: true });
+	const lecturersResult = await query(
+		'SELECT id, nama FROM lecturers ORDER BY sort_order ASC, nama ASC'
+	);
 
 	// Group sessions by week
 	const sessionsByWeek: Record<number, typeof sortedSessions> = {};
@@ -71,12 +65,12 @@ export const load: PageServerLoad = async ({ cookies }) => {
 
 	return {
 		sessionsByWeek,
-		lecturers: lecturers || []
+		lecturers: lecturersResult.rows
 	};
 };
 
 export const actions: Actions = {
-	create: async ({ request, cookies }) => {
+	create: async ({ request }) => {
 		const formData = await request.formData();
 		const minggu = parseInt(formData.get('minggu') as string);
 		const hari = formData.get('hari') as string;
@@ -87,24 +81,15 @@ export const actions: Actions = {
 			return fail(400, { error: 'Semua medan diperlukan' });
 		}
 
-		const supabase = createClient(cookies);
-
-		// Set bulan=0 dan tahun=0 untuk menandakan sesi tetap (bukan bulanan)
-		const { error } = await supabase
-			.from('lecture_sessions')
-			.insert({
-				bulan: 0,
-				tahun: 0,
-				minggu,
-				hari,
-				jenis_kuliah,
-				lecturer_id,
-				is_active: true
-			});
-
-		if (error) {
-			console.error('Error creating session:', error);
-			if (error.code === '23505') {
+		try {
+			await query(
+				`INSERT INTO lecture_sessions (bulan, tahun, minggu, hari, jenis_kuliah, lecturer_id, is_active)
+				 VALUES (0, 0, $1, $2, $3, $4, true)`,
+				[minggu, hari, jenis_kuliah, lecturer_id]
+			);
+		} catch (err: unknown) {
+			console.error('Error creating session:', err);
+			if (err && typeof err === 'object' && 'code' in err && err.code === '23505') {
 				return fail(400, { error: 'Sesi ini sudah wujud' });
 			}
 			return fail(500, { error: 'Ralat semasa menambah sesi' });
@@ -113,7 +98,7 @@ export const actions: Actions = {
 		return { success: true };
 	},
 
-	toggleActive: async ({ request, cookies }) => {
+	toggleActive: async ({ request }) => {
 		const formData = await request.formData();
 		const id = formData.get('id') as string;
 		const is_active = formData.get('is_active') === 'true';
@@ -122,22 +107,20 @@ export const actions: Actions = {
 			return fail(400, { error: 'ID sesi diperlukan' });
 		}
 
-		const supabase = createClient(cookies);
-
-		const { error } = await supabase
-			.from('lecture_sessions')
-			.update({ is_active: !is_active })
-			.eq('id', id);
-
-		if (error) {
-			console.error('Error toggling session:', error);
+		try {
+			await query(
+				'UPDATE lecture_sessions SET is_active = $1 WHERE id = $2',
+				[!is_active, id]
+			);
+		} catch (err) {
+			console.error('Error toggling session:', err);
 			return fail(500, { error: 'Ralat semasa mengemaskini sesi' });
 		}
 
 		return { success: true };
 	},
 
-	delete: async ({ request, cookies }) => {
+	delete: async ({ request }) => {
 		const formData = await request.formData();
 		const id = formData.get('id') as string;
 
@@ -145,15 +128,10 @@ export const actions: Actions = {
 			return fail(400, { error: 'ID sesi diperlukan' });
 		}
 
-		const supabase = createClient(cookies);
-
-		const { error } = await supabase
-			.from('lecture_sessions')
-			.delete()
-			.eq('id', id);
-
-		if (error) {
-			console.error('Error deleting session:', error);
+		try {
+			await query('DELETE FROM lecture_sessions WHERE id = $1', [id]);
+		} catch (err) {
+			console.error('Error deleting session:', err);
 			return fail(500, { error: 'Ralat semasa memadam sesi' });
 		}
 

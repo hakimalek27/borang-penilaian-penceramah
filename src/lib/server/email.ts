@@ -188,7 +188,7 @@ export function validateEvaluationSummary(summary: EvaluationSummary): {
 
 /**
  * Send email notification for new evaluation
- * This is a mock implementation - in production, integrate with Resend, SendGrid, or Supabase Edge Functions
+ * This is a mock implementation - in production, integrate with Resend or SendGrid
  */
 export async function sendEvaluationNotification(summary: EvaluationSummary): Promise<EmailResult> {
 	// Validate summary

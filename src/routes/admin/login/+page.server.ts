@@ -1,14 +1,13 @@
 import { redirect, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { createClient } from '$lib/server/supabase';
+import { getSession, verifyPassword, createSession } from '$lib/server/auth';
 import { query } from '$lib/server/db';
 
 export const load: PageServerLoad = async ({ cookies }) => {
-	const supabase = createClient(cookies);
-	const { data: { session } } = await supabase.auth.getSession();
+	const admin = await getSession(cookies);
 
 	// If already logged in, redirect to dashboard
-	if (session) {
+	if (admin) {
 		throw redirect(303, '/admin/dashboard');
 	}
 
@@ -25,34 +24,26 @@ export const actions: Actions = {
 			return fail(400, { error: 'Email dan kata laluan diperlukan' });
 		}
 
-		const supabase = createClient(cookies);
-
-		const { data, error } = await supabase.auth.signInWithPassword({
-			email,
-			password
-		});
-
-		if (error || !data?.user?.id) {
-			console.error('Auth error:', error);
-			return fail(401, { error: 'Pengesahan gagal. Sila semak email dan kata laluan.' });
-		}
-
-		// Check if user is admin (local DB)
 		try {
 			const result = await query(
-				'SELECT id FROM admins WHERE id = $1 LIMIT 1',
-				[data.user.id]
+				'SELECT id, email, password_hash FROM admins WHERE email = $1 LIMIT 1',
+				[email]
 			);
 
-			const adminData = result.rows[0];
+			const admin = result.rows[0];
 
-			if (!adminData) {
-				await supabase.auth.signOut();
-				return fail(403, { error: 'Akses tidak dibenarkan. Anda bukan admin.' });
+			if (!admin || !admin.password_hash) {
+				return fail(401, { error: 'Pengesahan gagal. Sila semak email dan kata laluan.' });
 			}
+
+			const valid = await verifyPassword(password, admin.password_hash);
+			if (!valid) {
+				return fail(401, { error: 'Pengesahan gagal. Sila semak email dan kata laluan.' });
+			}
+
+			await createSession(admin.id, cookies);
 		} catch (err) {
-			console.error('DB error:', err);
-			await supabase.auth.signOut();
+			console.error('Login error:', err);
 			return fail(500, { error: 'Ralat pelayan. Sila cuba lagi.' });
 		}
 

@@ -113,7 +113,7 @@ describe('Property 4: Partial Evaluation Submission', () => {
  * SHALL match the original submission data exactly.
  * 
  * NOTE: This test validates the data transformation logic. Full round-trip testing
- * requires a running Supabase instance.
+ * requires a running PostgreSQL instance.
  */
 describe('Property 5: Evaluation Data Round-Trip', () => {
 	it('should preserve all evaluation data through transformation', () => {
