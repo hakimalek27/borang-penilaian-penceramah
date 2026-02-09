@@ -165,7 +165,7 @@
 				return { icon: '⭐', text: 'Skor Ilmu', target: 'rating', sessionId };
 			}
 			if (ratings.q3_penyampaian === null) {
-				return { icon: '⭐', text: 'Penyampaian', target: 'rating', sessionId };
+				return { icon: '⭐', text: 'Skor Kualiti', target: 'rating', sessionId };
 			}
 			if (ratings.q4_masa === null) {
 				return { icon: '⭐', text: 'Skor Masa', target: 'rating', sessionId };
