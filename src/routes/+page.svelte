@@ -239,12 +239,37 @@
 		switch (guide.target) {
 			case 'evaluator':
 				evaluatorSectionRef?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-				// Focus on first empty input after scroll
+				// Focus on the specific empty field after scroll
 				setTimeout(() => {
-					const firstInput = evaluatorSectionRef?.querySelector('input:not([type="date"]), textarea');
-					if (firstInput instanceof HTMLElement) {
-						firstInput.focus();
+					let targetEl: HTMLElement | null = null;
+					const guideText = guide.text;
+					if (guideText === 'Isi Nama') {
+						const label = evaluatorSectionRef?.querySelector('label');
+						const labels = evaluatorSectionRef?.querySelectorAll('label') || [];
+						for (const l of labels) {
+							if (l.textContent?.includes('Nama')) {
+								const inputId = l.getAttribute('for');
+								if (inputId) targetEl = document.getElementById(inputId);
+								break;
+							}
+						}
+					} else if (guideText === 'Isi Umur') {
+						const labels = evaluatorSectionRef?.querySelectorAll('label') || [];
+						for (const l of labels) {
+							if (l.textContent?.includes('Umur')) {
+								const inputId = l.getAttribute('for');
+								if (inputId) targetEl = document.getElementById(inputId);
+								break;
+							}
+						}
+					} else if (guideText === 'Isi Alamat') {
+						targetEl = document.getElementById('alamat');
 					}
+					// Fallback to first input if specific field not found
+					if (!targetEl) {
+						targetEl = evaluatorSectionRef?.querySelector('input:not([type="date"]), textarea') || null;
+					}
+					targetEl?.focus();
 				}, 500);
 				break;
 			case 'lecturer':
