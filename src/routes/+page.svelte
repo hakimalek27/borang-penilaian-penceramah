@@ -14,6 +14,19 @@
 
 	let { data }: { data: PageData } = $props();
 
+	// Scroll assist state
+	let isAtBottom = $state(false);
+	let submitSectionRef: HTMLElement | null = $state(null);
+
+	// Section refs for smart scroll
+	let evaluatorSectionRef: HTMLElement | null = $state(null);
+	let lecturerSectionRef: HTMLElement | null = $state(null);
+
+	// Idle detection for pulse animation
+	let lastInteractionTime = $state(Date.now());
+	let isIdle = $state(false);
+	const IDLE_THRESHOLD = 8000; // 8 seconds
+
 	// Form state
 	let evaluator: EvaluatorInfoType = $state({
 		nama: '',
@@ -26,7 +39,7 @@
 	
 	// Track which lecturers are expanded and their ratings
 	let expandedLecturers: Set<string> = $state(new Set());
-	let lecturerRatings: Record<string, { ratings: EvaluationRatings; recommendation: boolean | null }> = $state({});
+	let lecturerRatings: Record<string, { ratings: EvaluationRatings }> = $state({});
 	
 	// Comments
 	let komenPenceramah = $state('');
@@ -49,8 +62,7 @@
 				q1_tajuk: data.ratings.q1_tajuk,
 				q2_ilmu: data.ratings.q2_ilmu,
 				q3_penyampaian: data.ratings.q3_penyampaian,
-				q4_masa: data.ratings.q4_masa,
-				recommendation: data.recommendation
+				q4_masa: data.ratings.q4_masa
 			});
 		}
 		
@@ -71,6 +83,17 @@
 	// Auto-save draft on changes
 	$effect(() => {
 		if (browser && (evaluator.nama || expandedLecturers.size > 0)) {
+			// Transform lecturerRatings to flat format for draft storage
+			const flatRatings: Record<string, { q1_tajuk: number | null; q2_ilmu: number | null; q3_penyampaian: number | null; q4_masa: number | null }> = {};
+			for (const [id, data] of Object.entries(lecturerRatings)) {
+				flatRatings[id] = {
+					q1_tajuk: data.ratings.q1_tajuk,
+					q2_ilmu: data.ratings.q2_ilmu,
+					q3_penyampaian: data.ratings.q3_penyampaian,
+					q4_masa: data.ratings.q4_masa
+				};
+			}
+			
 			const draftData = {
 				evaluatorInfo: {
 					nama: evaluator.nama,
@@ -79,7 +102,7 @@
 					tarikh: evaluator.tarikh
 				},
 				selectedLecturers: Array.from(expandedLecturers),
-				ratings: lecturerRatings,
+				ratings: flatRatings,
 				komenPenceramah,
 				cadanganMasjid
 			};
@@ -87,7 +110,73 @@
 		}
 	});
 
-	// Check for existing draft on mount
+	// Derived values for floating scroll assist
+	const progressColor = $derived(() => {
+		const progress = formProgress();
+		if (progress < 50) return '#dc3545'; // red
+		if (progress < 100) return '#ffc107'; // yellow
+		return '#28a745'; // green
+	});
+
+	// Smart Guide Logic - determines what section needs attention
+	interface SmartGuide {
+		icon: string;
+		text: string;
+		target: 'evaluator' | 'lecturer' | 'rating' | 'submit';
+		sessionId?: string; // For scrolling to specific lecturer card
+	}
+
+	const smartGuide = $derived((): SmartGuide => {
+		// Check evaluator info first
+		const evaluatorComplete = evaluator.nama.trim() !== '' &&
+			evaluator.umur > 0 &&
+			evaluator.alamat.trim() !== '' &&
+			evaluator.tarikh.trim() !== '';
+
+		if (!evaluatorComplete) {
+			// Determine which field is missing
+			if (!evaluator.nama.trim()) {
+				return { icon: '📝', text: 'Isi Nama', target: 'evaluator' };
+			}
+			if (evaluator.umur <= 0) {
+				return { icon: '📝', text: 'Isi Umur', target: 'evaluator' };
+			}
+			if (!evaluator.alamat.trim()) {
+				return { icon: '📝', text: 'Isi Alamat', target: 'evaluator' };
+			}
+			return { icon: '📝', text: 'Isi Tarikh', target: 'evaluator' };
+		}
+
+		// Check if any lecturer selected
+		if (expandedLecturers.size === 0) {
+			return { icon: '👤', text: 'Pilih Ustaz', target: 'lecturer' };
+		}
+
+		// Check if all selected lecturers have complete ratings
+		for (const sessionId of expandedLecturers) {
+			const ratings = lecturerRatings[sessionId]?.ratings;
+			if (!ratings) {
+				return { icon: '⭐', text: 'Beri Skor', target: 'rating', sessionId };
+			}
+			if (ratings.q1_tajuk === null) {
+				return { icon: '⭐', text: 'Skor Tajuk', target: 'rating', sessionId };
+			}
+			if (ratings.q2_ilmu === null) {
+				return { icon: '⭐', text: 'Skor Ilmu', target: 'rating', sessionId };
+			}
+			if (ratings.q3_penyampaian === null) {
+				return { icon: '⭐', text: 'Skor Kualiti', target: 'rating', sessionId };
+			}
+			if (ratings.q4_masa === null) {
+				return { icon: '⭐', text: 'Skor Masa', target: 'rating', sessionId };
+			}
+		}
+
+		// All complete - ready to submit
+		return { icon: '✅', text: 'Hantar!', target: 'submit' };
+	});
+
+	// Check for existing draft on mount + scroll tracking + idle detection
 	onMount(() => {
 		if (hasDraft()) {
 			const age = getDraftAge();
@@ -96,7 +185,113 @@
 				showDraftModal = true;
 			}
 		}
+
+		// Scroll tracking for floating button
+		const handleScroll = () => {
+			const scrollTop = window.scrollY;
+			const windowHeight = window.innerHeight;
+			const docHeight = document.documentElement.scrollHeight;
+			// Consider "at bottom" when within 150px of bottom
+			isAtBottom = scrollTop + windowHeight >= docHeight - 150;
+			// Reset idle on scroll
+			resetIdleTimer();
+		};
+
+		// Idle detection - check every second
+		const idleInterval = setInterval(() => {
+			const timeSinceInteraction = Date.now() - lastInteractionTime;
+			// Only show idle pulse if form is not complete
+			if (timeSinceInteraction >= IDLE_THRESHOLD && formProgress() < 100) {
+				isIdle = true;
+			}
+		}, 1000);
+
+		// Reset idle on any user interaction
+		const resetIdleOnInteraction = () => resetIdleTimer();
+
+		window.addEventListener('scroll', handleScroll, { passive: true });
+		window.addEventListener('click', resetIdleOnInteraction, { passive: true });
+		window.addEventListener('touchstart', resetIdleOnInteraction, { passive: true });
+		window.addEventListener('keydown', resetIdleOnInteraction, { passive: true });
+
+		handleScroll(); // Initial check
+
+		return () => {
+			window.removeEventListener('scroll', handleScroll);
+			window.removeEventListener('click', resetIdleOnInteraction);
+			window.removeEventListener('touchstart', resetIdleOnInteraction);
+			window.removeEventListener('keydown', resetIdleOnInteraction);
+			clearInterval(idleInterval);
+		};
 	});
+
+	// Reset idle timer
+	function resetIdleTimer() {
+		lastInteractionTime = Date.now();
+		isIdle = false;
+	}
+
+	// Smart scroll to incomplete section
+	function smartScrollToSection() {
+		const guide = smartGuide();
+		resetIdleTimer();
+
+		switch (guide.target) {
+			case 'evaluator':
+				evaluatorSectionRef?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+				// Focus on the specific empty field after scroll
+				setTimeout(() => {
+					let targetEl: HTMLElement | null = null;
+					const guideText = guide.text;
+					if (guideText === 'Isi Nama') {
+						const label = evaluatorSectionRef?.querySelector('label');
+						const labels = evaluatorSectionRef?.querySelectorAll('label') || [];
+						for (const l of labels) {
+							if (l.textContent?.includes('Nama')) {
+								const inputId = l.getAttribute('for');
+								if (inputId) targetEl = document.getElementById(inputId);
+								break;
+							}
+						}
+					} else if (guideText === 'Isi Umur') {
+						const labels = evaluatorSectionRef?.querySelectorAll('label') || [];
+						for (const l of labels) {
+							if (l.textContent?.includes('Umur')) {
+								const inputId = l.getAttribute('for');
+								if (inputId) targetEl = document.getElementById(inputId);
+								break;
+							}
+						}
+					} else if (guideText === 'Isi Alamat') {
+						targetEl = document.getElementById('alamat');
+					}
+					// Fallback to first input if specific field not found
+					if (!targetEl) {
+						targetEl = evaluatorSectionRef?.querySelector('input:not([type="date"]), textarea') || null;
+					}
+					targetEl?.focus();
+				}, 500);
+				break;
+			case 'lecturer':
+				lecturerSectionRef?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				break;
+			case 'rating':
+				// Scroll to the specific lecturer card that needs rating
+				if (guide.sessionId) {
+					const lecturerCard = document.querySelector(`[data-session-id="${guide.sessionId}"]`);
+					if (lecturerCard) {
+						lecturerCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+						// Highlight the card briefly
+						lecturerCard.classList.add('highlight-attention');
+						setTimeout(() => lecturerCard.classList.remove('highlight-attention'), 2000);
+					}
+				}
+				break;
+			case 'submit':
+				submitSectionRef?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+				break;
+		}
+	}
 
 	function restoreDraft() {
 		const draft = loadDraft();
@@ -108,7 +303,12 @@
 				tarikh: draft.evaluatorInfo.tarikh || data.today
 			};
 			expandedLecturers = new Set(draft.selectedLecturers);
-			lecturerRatings = draft.ratings || {};
+			// Transform flat ratings back to nested format
+			const nestedRatings: Record<string, { ratings: { q1_tajuk: number | null; q2_ilmu: number | null; q3_penyampaian: number | null; q4_masa: number | null } }> = {};
+			for (const [id, ratings] of Object.entries(draft.ratings || {})) {
+				nestedRatings[id] = { ratings };
+			}
+			lecturerRatings = nestedRatings;
 			komenPenceramah = draft.komenPenceramah || '';
 			cadanganMasjid = draft.cadanganMasjid || '';
 		}
@@ -126,11 +326,6 @@
 		window.scrollTo({ top: 0, behavior: 'smooth' });
 	}
 
-	// Month names in Malay
-	const monthNames = [
-		'Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun',
-		'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'
-	];
 
 	function toggleLecturer(sessionId: string) {
 		if (expandedLecturers.has(sessionId)) {
@@ -140,8 +335,7 @@
 			// Initialize ratings if not exists
 			if (!lecturerRatings[sessionId]) {
 				lecturerRatings[sessionId] = {
-					ratings: { q1_tajuk: null, q2_ilmu: null, q3_penyampaian: null, q4_masa: null },
-					recommendation: null
+					ratings: { q1_tajuk: null, q2_ilmu: null, q3_penyampaian: null, q4_masa: null }
 				};
 			}
 		}
@@ -151,12 +345,6 @@
 	function updateRating(sessionId: string, question: keyof EvaluationRatings, value: number) {
 		if (lecturerRatings[sessionId]) {
 			lecturerRatings[sessionId].ratings[question] = value;
-		}
-	}
-
-	function updateRecommendation(sessionId: string, value: boolean) {
-		if (lecturerRatings[sessionId]) {
-			lecturerRatings[sessionId].recommendation = value;
 		}
 	}
 
@@ -179,20 +367,18 @@
 			sessionId: string;
 			lecturerId: string;
 			ratings: EvaluationRatings;
-			recommendation: boolean;
 		}> = [];
 
-		for (const [sessionId, data] of Object.entries(lecturerRatings)) {
-			if (isRatingsComplete(data.ratings) && data.recommendation !== null) {
-				const session = Object.values($state.snapshot(data)).length > 0 
+		for (const [sessionId, ratingData] of Object.entries(lecturerRatings)) {
+			if (isRatingsComplete(ratingData.ratings)) {
+				const session = Object.values($state.snapshot(ratingData)).length > 0 
 					? findSession(sessionId) 
 					: null;
 				if (session?.lecturer_id) {
 					evaluations.push({
 						sessionId,
 						lecturerId: session.lecturer_id,
-						ratings: data.ratings as EvaluationRatings,
-						recommendation: data.recommendation
+						ratings: ratingData.ratings as EvaluationRatings
 					});
 				}
 			}
@@ -309,15 +495,14 @@
 <main class="container">
 	<!-- Banner -->
 	<header class="banner">
-		<img 
-			src="/images/masjid-banner.jpg" 
-			alt="Masjid Al-Muttaqin Wangsa Melawati" 
+		<img
+			src="/images/masjid-banner.jpg"
+			alt="Masjid Al-Muttaqin Wangsa Melawati"
 			class="banner-image"
-			onerror={(e) => (e.currentTarget.style.display = 'none')}
+			onerror={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
 		/>
-		<h1>Borang Maklum Balas Kuliah Bulanan</h1>
+		<h1>Borang Maklum Balas Kuliah</h1>
 		<p class="subtitle">Masjid Al-Muttaqin Wangsa Melawati, Kuala Lumpur</p>
-		<p class="month-info">{monthNames[data.currentMonth - 1]} {data.currentYear}</p>
 	</header>
 
 	<!-- Progress Indicator -->
@@ -331,9 +516,9 @@
 
 	<form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
 		<!-- Bahagian A: Maklumat Penilai -->
-		<section class="section">
+		<section class="section" bind:this={evaluatorSectionRef}>
 			<h2 class="section-title">Bahagian A: Maklumat Penilai</h2>
-			<EvaluatorInfo 
+			<EvaluatorInfo
 				bind:nama={evaluator.nama}
 				bind:umur={evaluator.umur}
 				bind:alamat={evaluator.alamat}
@@ -343,25 +528,25 @@
 		</section>
 
 		<!-- Bahagian B: Pilihan Penceramah -->
-		<section class="section">
+		<section class="section" bind:this={lecturerSectionRef}>
 			<h2 class="section-title">Bahagian B: Penilaian Penceramah</h2>
 			<p class="section-desc">Klik pada kad penceramah untuk memberi penilaian.</p>
-			
+
 			{#each [1, 2, 3, 4, 5] as week}
 				<div class="week-section">
 					<h3 class="week-title">Minggu {week}</h3>
 					{#if data.sessionsByWeek[week]?.length > 0}
 						<div class="lecturer-grid">
 							{#each data.sessionsByWeek[week] as session}
-								<LecturerCard 
-									{session}
-									isExpanded={expandedLecturers.has(session.id)}
-									ratings={lecturerRatings[session.id]?.ratings}
-									recommendation={lecturerRatings[session.id]?.recommendation}
-									onToggle={() => toggleLecturer(session.id)}
-									onRatingChange={(q, v) => updateRating(session.id, q, v)}
-									onRecommendationChange={(v) => updateRecommendation(session.id, v)}
-								/>
+								<div data-session-id={session.id}>
+									<LecturerCard
+										{session}
+										isExpanded={expandedLecturers.has(session.id)}
+										ratings={lecturerRatings[session.id]?.ratings}
+										onToggle={() => toggleLecturer(session.id)}
+										onRatingChange={(q, v) => updateRating(session.id, q, v)}
+									/>
+								</div>
 							{/each}
 						</div>
 					{:else}
@@ -390,7 +575,7 @@
 		</div>
 
 		<!-- Submit Button -->
-		<div class="submit-section">
+		<div class="submit-section" bind:this={submitSectionRef}>
 			<Button type="submit" size="lg" loading={isSubmitting}>
 				Hantar Penilaian
 			</Button>
@@ -402,6 +587,56 @@
 		</div>
 	</form>
 </main>
+
+<!-- Floating Smart Guide -->
+<button
+	class="scroll-assist"
+	class:complete={formProgress() >= 100}
+	class:idle-pulse={isIdle && formProgress() < 100}
+	onclick={smartScrollToSection}
+	aria-label="Panduan ke bahagian seterusnya"
+>
+	<!-- Progress Ring -->
+	<svg class="progress-ring" viewBox="0 0 100 100">
+		<circle
+			class="progress-ring-bg"
+			cx="50"
+			cy="50"
+			r="45"
+			fill="none"
+			stroke="#e5e7eb"
+			stroke-width="6"
+		/>
+		<circle
+			class="progress-ring-fill"
+			cx="50"
+			cy="50"
+			r="45"
+			fill="none"
+			stroke={progressColor()}
+			stroke-width="6"
+			stroke-linecap="round"
+			stroke-dasharray={283}
+			stroke-dashoffset={283 - (283 * formProgress()) / 100}
+			transform="rotate(-90 50 50)"
+		/>
+	</svg>
+
+	<!-- Inner Content with Smart Guide -->
+	<span class="scroll-assist-inner" style="background: {formProgress() >= 100 ? '#22c55e' : 'white'}">
+		{#if formProgress() >= 100}
+			<!-- Checkmark Icon when complete -->
+			<svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+				<polyline points="20 6 9 17 4 12"></polyline>
+			</svg>
+			<span class="scroll-assist-text complete">Hantar!</span>
+		{:else}
+			<!-- Smart Guide Icon & Text -->
+			<span class="scroll-assist-icon">{smartGuide().icon}</span>
+			<span class="scroll-assist-text guide" style="color: {progressColor()}">{smartGuide().text}</span>
+		{/if}
+	</span>
+</button>
 
 <style>
 	/* Success Modal */
@@ -474,7 +709,7 @@
 	}
 
 	.modal-button {
-		background: #1a5f2a;
+		background-color: #1a5f2a;
 		color: white;
 		border: none;
 		padding: 1rem 2rem;
@@ -486,24 +721,28 @@
 		width: 100%;
 		max-width: 280px;
 		touch-action: manipulation;
+		-webkit-appearance: none;
+		-moz-appearance: none;
+		appearance: none;
 	}
 
 	.modal-button:hover {
-		background: #145022;
+		background-color: #145022;
 		transform: scale(1.02);
 	}
 
 	.modal-button:active {
 		transform: scale(0.98);
+		background-color: #145022;
 	}
 
 	.modal-button.secondary {
-		background: #f5f5f5;
-		color: #666;
+		background-color: #6c757d;
+		color: white;
 	}
 
 	.modal-button.secondary:hover {
-		background: #e8e8e8;
+		background-color: #5a6268;
 	}
 
 	.modal-buttons {
@@ -558,16 +797,6 @@
 		font-size: 0.9rem;
 	}
 
-	.month-info {
-		display: inline-block;
-		background: linear-gradient(135deg, #1a5f2a, #2d8a3e);
-		color: white;
-		font-weight: 600;
-		margin-top: 0.75rem;
-		padding: 0.5rem 1.25rem;
-		border-radius: 2rem;
-		font-size: 0.9rem;
-	}
 
 	.section-desc {
 		color: #666;
@@ -719,6 +948,213 @@
 
 		.scale-legend {
 			font-size: 0.75rem;
+		}
+	}
+
+	/* Floating Scroll Assist */
+	.scroll-assist {
+		position: fixed;
+		bottom: calc(18rem + env(safe-area-inset-bottom, 0px));
+		right: 1rem;
+		width: 100px;
+		height: 100px;
+		border-radius: 50%;
+		background: transparent;
+		border: none;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 900;
+		transition: transform 0.2s ease, filter 0.2s ease;
+		touch-action: manipulation;
+		-webkit-tap-highlight-color: transparent;
+		filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.2));
+	}
+
+	.scroll-assist:hover {
+		transform: scale(1.08);
+		filter: drop-shadow(0 6px 20px rgba(0, 0, 0, 0.25));
+	}
+
+	.scroll-assist:active {
+		transform: scale(0.95);
+	}
+
+	.scroll-assist.complete {
+		animation: pulse-glow 1.5s ease-in-out infinite;
+	}
+
+	/* Idle pulse animation - bounces to get attention */
+	.scroll-assist.idle-pulse {
+		animation: idle-bounce 1s ease-in-out infinite;
+	}
+
+	@keyframes idle-bounce {
+		0%, 100% {
+			transform: scale(1) translateY(0);
+			filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.2));
+		}
+		50% {
+			transform: scale(1.1) translateY(-8px);
+			filter: drop-shadow(0 8px 25px rgba(0, 0, 0, 0.3));
+		}
+	}
+
+	@keyframes pulse-glow {
+		0%, 100% {
+			filter: drop-shadow(0 4px 12px rgba(34, 197, 94, 0.4));
+		}
+		50% {
+			filter: drop-shadow(0 4px 25px rgba(34, 197, 94, 0.7));
+		}
+	}
+
+	.progress-ring {
+		position: absolute;
+		width: 100%;
+		height: 100%;
+	}
+
+	.progress-ring-bg {
+		opacity: 0.3;
+	}
+
+	.progress-ring-fill {
+		transition: stroke-dashoffset 0.4s ease, stroke 0.3s ease;
+	}
+
+	.scroll-assist-inner {
+		position: absolute;
+		width: 80px;
+		height: 80px;
+		border-radius: 50%;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 2px;
+		transition: background 0.3s ease, transform 0.3s ease;
+		box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+	}
+
+	.scroll-assist.complete .scroll-assist-inner {
+		transform: scale(1.05);
+	}
+
+	.check-icon {
+		width: 22px;
+		height: 22px;
+		animation: check-pop 0.4s ease;
+	}
+
+	@keyframes check-pop {
+		0% {
+			transform: scale(0);
+			opacity: 0;
+		}
+		50% {
+			transform: scale(1.2);
+		}
+		100% {
+			transform: scale(1);
+			opacity: 1;
+		}
+	}
+
+	.scroll-assist-icon {
+		font-size: 1.6rem;
+		line-height: 1;
+		animation: icon-pop 0.3s ease;
+	}
+
+	@keyframes icon-pop {
+		0% { transform: scale(0.8); opacity: 0.5; }
+		50% { transform: scale(1.1); }
+		100% { transform: scale(1); opacity: 1; }
+	}
+
+	.scroll-assist-percent {
+		font-size: 1rem;
+		font-weight: 800;
+		line-height: 1;
+		transition: color 0.3s ease;
+		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+	}
+
+	.scroll-assist-text {
+		font-size: 0.65rem;
+		color: #64748b;
+		font-weight: 800;
+		white-space: normal;
+		text-align: center;
+		text-transform: uppercase;
+		letter-spacing: 0.02em;
+		max-width: 68px;
+		line-height: 1.15;
+		overflow: hidden;
+	}
+
+	.scroll-assist-text.guide {
+		font-size: 0.65rem;
+		font-weight: 900;
+		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+	}
+
+	.scroll-assist-text.complete {
+		color: white;
+		font-size: 0.9rem;
+		font-weight: 900;
+		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+	}
+
+	/* Highlight attention animation for lecturer cards */
+	:global([data-session-id].highlight-attention) {
+		animation: highlight-pulse 0.5s ease-in-out 3;
+	}
+
+	@keyframes highlight-pulse {
+		0%, 100% {
+			box-shadow: 0 0 0 0 rgba(26, 95, 42, 0);
+		}
+		50% {
+			box-shadow: 0 0 0 8px rgba(26, 95, 42, 0.3);
+		}
+	}
+
+	/* Desktop styles */
+	@media (min-width: 640px) {
+		.scroll-assist {
+			bottom: 2rem;
+			right: 2rem;
+			width: 110px;
+			height: 110px;
+		}
+
+		.scroll-assist-inner {
+			width: 88px;
+			height: 88px;
+		}
+
+		.scroll-assist-icon {
+			font-size: 1.8rem;
+		}
+
+		.scroll-assist-percent {
+			font-size: 1.25rem;
+		}
+
+		.scroll-assist-text {
+			font-size: 0.7rem;
+		}
+
+		.scroll-assist-text.guide {
+			font-size: 0.7rem;
+		}
+
+		.check-icon {
+			width: 32px;
+			height: 32px;
 		}
 	}
 </style>

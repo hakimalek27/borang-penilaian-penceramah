@@ -65,7 +65,6 @@ describe('Property 16: CSV Export Completeness', () => {
 			'Ilmu (Q2)',
 			'Penyampaian (Q3)',
 			'Masa (Q4)',
-			'Cadangan Teruskan',
 			'Komen Penceramah',
 			'Cadangan Masjid'
 		];
@@ -119,7 +118,6 @@ describe('Property 16: CSV Export Completeness', () => {
 				expect(dataRow).toContain(evaluation.q2_ilmu.toString());
 				expect(dataRow).toContain(evaluation.q3_penyampaian.toString());
 				expect(dataRow).toContain(evaluation.q4_masa.toString());
-				expect(dataRow).toContain(evaluation.cadangan_teruskan ? 'Ya' : 'Tidak');
 			}),
 			{ numRuns: 100 }
 		);

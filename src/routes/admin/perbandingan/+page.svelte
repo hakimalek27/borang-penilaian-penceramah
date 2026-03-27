@@ -1,43 +1,13 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
-	import { Button, Select } from '$lib/components/ui';
+	import { Button } from '$lib/components/ui';
 	import LecturerComparison from '$lib/components/admin/LecturerComparison.svelte';
 
 	let { data }: { data: PageData } = $props();
 
 	// State for lecturer selection
 	let selectedLecturers = $state<string[]>(data.selectedIds || []);
-	let filterMonth = $state<number | null>(data.filters.month);
-	let filterYear = $state<number | null>(data.filters.year);
-
-	// Generate month options
-	const monthOptions = [
-		{ value: null, label: 'Semua Bulan' },
-		{ value: 1, label: 'Januari' },
-		{ value: 2, label: 'Februari' },
-		{ value: 3, label: 'Mac' },
-		{ value: 4, label: 'April' },
-		{ value: 5, label: 'Mei' },
-		{ value: 6, label: 'Jun' },
-		{ value: 7, label: 'Julai' },
-		{ value: 8, label: 'Ogos' },
-		{ value: 9, label: 'September' },
-		{ value: 10, label: 'Oktober' },
-		{ value: 11, label: 'November' },
-		{ value: 12, label: 'Disember' }
-	];
-
-	// Generate year options
-	const currentYear = new Date().getFullYear();
-	const yearOptions = [
-		{ value: null, label: 'Semua Tahun' },
-		...Array.from({ length: 5 }, (_, i) => ({
-			value: currentYear - i,
-			label: String(currentYear - i)
-		}))
-	];
 
 	function toggleLecturer(lecturerId: string) {
 		if (selectedLecturers.includes(lecturerId)) {
@@ -47,24 +17,21 @@
 		}
 	}
 
+	function selectAll() {
+		// Select first 5 lecturers
+		selectedLecturers = data.lecturers.slice(0, 5).map(l => l.id);
+	}
+
 	function applyFilters() {
 		const params = new URLSearchParams();
 		if (selectedLecturers.length > 0) {
 			params.set('lecturers', selectedLecturers.join(','));
-		}
-		if (filterMonth) {
-			params.set('month', String(filterMonth));
-		}
-		if (filterYear) {
-			params.set('year', String(filterYear));
 		}
 		goto(`/admin/perbandingan?${params.toString()}`);
 	}
 
 	function clearSelection() {
 		selectedLecturers = [];
-		filterMonth = null;
-		filterYear = null;
 		goto('/admin/perbandingan');
 	}
 </script>
@@ -82,8 +49,21 @@
 	<div class="content-grid">
 		<!-- Lecturer Selection Panel -->
 		<div class="selection-panel">
-			<h2>Pilih Penceramah</h2>
-			<p class="hint">Pilih sehingga 5 penceramah untuk perbandingan</p>
+			<div class="panel-header">
+				<h2>Pilih Penceramah</h2>
+				<span class="hint">Maksimum 5 penceramah</span>
+			</div>
+
+			<div class="quick-actions">
+				<button type="button" class="quick-btn" onclick={selectAll}>
+					Pilih 5 Pertama
+				</button>
+				{#if selectedLecturers.length > 0}
+					<button type="button" class="quick-btn clear" onclick={clearSelection}>
+						Reset
+					</button>
+				{/if}
+			</div>
 
 			<div class="lecturer-list">
 				{#each data.lecturers as lecturer}
@@ -94,24 +74,18 @@
 							disabled={!selectedLecturers.includes(lecturer.id) && selectedLecturers.length >= 5}
 							onchange={() => toggleLecturer(lecturer.id)}
 						/>
-						<span>{lecturer.nama}</span>
+						<span class="lecturer-name">{lecturer.nama}</span>
+						{#if selectedLecturers.includes(lecturer.id)}
+							<span class="check-badge">{selectedLecturers.indexOf(lecturer.id) + 1}</span>
+						{/if}
 					</label>
 				{/each}
-			</div>
-
-			<div class="filters">
-				<h3>Penapis</h3>
-				<div class="filter-row">
-					<Select bind:value={filterMonth} options={monthOptions} />
-					<Select bind:value={filterYear} options={yearOptions} />
-				</div>
 			</div>
 
 			<div class="actions">
 				<Button onclick={applyFilters} disabled={selectedLecturers.length < 2}>
 					Bandingkan ({selectedLecturers.length})
 				</Button>
-				<Button variant="secondary" onclick={clearSelection}>Reset</Button>
 			</div>
 		</div>
 
@@ -121,7 +95,9 @@
 				<LecturerComparison comparisons={data.comparisons} />
 			{:else}
 				<div class="empty-state">
-					<p>Pilih sekurang-kurangnya 2 penceramah untuk melihat perbandingan</p>
+					<div class="empty-icon">⚖️</div>
+					<h3>Pilih Penceramah</h3>
+					<p>Pilih sekurang-kurangnya 2 penceramah dari senarai di sebelah untuk melihat perbandingan prestasi mereka.</p>
 				</div>
 			{/if}
 		</div>
@@ -153,48 +129,92 @@
 
 	.content-grid {
 		display: grid;
-		grid-template-columns: 300px 1fr;
+		grid-template-columns: 320px 1fr;
 		gap: 1.5rem;
 	}
 
 	.selection-panel {
 		background: white;
-		border-radius: 0.5rem;
+		border-radius: 0.75rem;
 		padding: 1.5rem;
 		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 		height: fit-content;
+		position: sticky;
+		top: 1rem;
 	}
 
-	.selection-panel h2 {
+	.panel-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 1rem;
+	}
+
+	.panel-header h2 {
 		font-size: 1rem;
 		font-weight: 600;
 		color: #1f2937;
-		margin-bottom: 0.25rem;
 	}
 
 	.hint {
 		font-size: 0.75rem;
 		color: #6b7280;
+		background: #f3f4f6;
+		padding: 0.25rem 0.5rem;
+		border-radius: 0.25rem;
+	}
+
+	.quick-actions {
+		display: flex;
+		gap: 0.5rem;
 		margin-bottom: 1rem;
+	}
+
+	.quick-btn {
+		flex: 1;
+		padding: 0.5rem;
+		font-size: 0.75rem;
+		border: 1px solid #e5e7eb;
+		background: #f9fafb;
+		border-radius: 0.375rem;
+		cursor: pointer;
+		transition: all 0.15s;
+	}
+
+	.quick-btn:hover {
+		background: #f3f4f6;
+		border-color: #d1d5db;
+	}
+
+	.quick-btn.clear {
+		background: #fef2f2;
+		border-color: #fecaca;
+		color: #dc2626;
+	}
+
+	.quick-btn.clear:hover {
+		background: #fee2e2;
 	}
 
 	.lecturer-list {
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
-		max-height: 300px;
+		gap: 0.375rem;
+		max-height: 400px;
 		overflow-y: auto;
 		margin-bottom: 1.5rem;
+		padding-right: 0.5rem;
 	}
 
 	.lecturer-checkbox {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
-		padding: 0.5rem;
-		border-radius: 0.375rem;
+		gap: 0.75rem;
+		padding: 0.75rem;
+		border-radius: 0.5rem;
 		cursor: pointer;
-		transition: background-color 0.15s;
+		transition: all 0.15s;
+		border: 1px solid transparent;
 	}
 
 	.lecturer-checkbox:hover {
@@ -203,55 +223,82 @@
 
 	.lecturer-checkbox.selected {
 		background-color: #eff6ff;
+		border-color: #bfdbfe;
 	}
 
 	.lecturer-checkbox input {
 		accent-color: #3b82f6;
+		width: 18px;
+		height: 18px;
 	}
 
 	.lecturer-checkbox input:disabled {
 		cursor: not-allowed;
+		opacity: 0.5;
 	}
 
-	.filters {
-		margin-bottom: 1.5rem;
-	}
-
-	.filters h3 {
+	.lecturer-name {
+		flex: 1;
 		font-size: 0.875rem;
-		font-weight: 600;
 		color: #374151;
-		margin-bottom: 0.75rem;
 	}
 
-	.filter-row {
+	.check-badge {
+		width: 20px;
+		height: 20px;
+		border-radius: 50%;
+		background: #3b82f6;
+		color: white;
+		font-size: 0.7rem;
+		font-weight: 600;
 		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
+		align-items: center;
+		justify-content: center;
 	}
 
 	.actions {
 		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
+	}
+
+	.actions :global(button) {
+		width: 100%;
 	}
 
 	.results-panel {
 		background: white;
-		border-radius: 0.5rem;
+		border-radius: 0.75rem;
 		padding: 1.5rem;
 		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-		min-height: 400px;
+		min-height: 500px;
 	}
 
 	.empty-state {
 		display: flex;
+		flex-direction: column;
 		align-items: center;
 		justify-content: center;
 		height: 100%;
-		min-height: 300px;
-		color: #6b7280;
+		min-height: 400px;
 		text-align: center;
+		padding: 2rem;
+	}
+
+	.empty-icon {
+		font-size: 4rem;
+		margin-bottom: 1rem;
+	}
+
+	.empty-state h3 {
+		font-size: 1.25rem;
+		font-weight: 600;
+		color: #1f2937;
+		margin-bottom: 0.5rem;
+	}
+
+	.empty-state p {
+		color: #6b7280;
+		max-width: 300px;
+		line-height: 1.5;
 	}
 
 	@media (max-width: 768px) {
@@ -260,11 +307,16 @@
 		}
 
 		.selection-panel {
+			position: static;
 			order: 1;
 		}
 
 		.results-panel {
 			order: 2;
+		}
+
+		.lecturer-list {
+			max-height: 250px;
 		}
 	}
 </style>

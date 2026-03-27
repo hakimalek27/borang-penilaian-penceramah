@@ -9,7 +9,6 @@ export interface AnalyticsInput {
 		q2_ilmu: number;
 		q3_penyampaian: number;
 		q4_masa: number;
-		cadangan_teruskan: boolean;
 		lecturer_id?: string;
 	}>;
 	lecturerScores: LecturerSummary[];
@@ -46,11 +45,6 @@ export function generateAnalytics(input: AnalyticsInput): AnalyticsResult {
 	const avgScore = lecturerScores.length > 0
 		? lecturerScores.reduce((sum, l) => sum + l.avgOverall, 0) / lecturerScores.length
 		: 0;
-	
-	const recommendationYes = evaluations.filter(e => e.cadangan_teruskan).length;
-	const recommendationYesPercent = totalEvaluations > 0 
-		? (recommendationYes / totalEvaluations) * 100 
-		: 0;
 
 	// Find top performer and needs attention
 	const sortedByScore = [...lecturerScores].sort((a, b) => b.avgOverall - a.avgOverall);
@@ -61,10 +55,10 @@ export function generateAnalytics(input: AnalyticsInput): AnalyticsResult {
 	const criteriaAnalysis = analyzeCriteria(lecturerScores);
 	
 	// Generate insights
-	const strengths = generateStrengths(criteriaAnalysis, avgScore, recommendationYesPercent);
-	const improvements = generateImprovements(criteriaAnalysis, avgScore, recommendationYesPercent);
+	const strengths = generateStrengths(criteriaAnalysis, avgScore);
+	const improvements = generateImprovements(criteriaAnalysis, avgScore);
 	const recommendations = generateRecommendations(criteriaAnalysis, lecturerScores);
-	const keyFindings = generateKeyFindings(totalEvaluations, avgScore, recommendationYesPercent, lecturerScores);
+	const keyFindings = generateKeyFindings(totalEvaluations, avgScore, lecturerScores);
 
 	// Risk assessment
 	const riskAssessment = assessRisks(lecturerScores);
@@ -75,7 +69,6 @@ export function generateAnalytics(input: AnalyticsInput): AnalyticsResult {
 			totalEvaluations,
 			totalLecturers,
 			averageScore: avgScore,
-			recommendationYesPercent,
 			topPerformer: topPerformer?.lecturerName,
 			needsAttention: needsAttention?.avgOverall < 2.5 ? needsAttention?.lecturerName : undefined,
 			strengths,
@@ -134,19 +127,13 @@ function analyzeCriteria(lecturerScores: LecturerSummary[]): CriteriaAnalysis {
 	};
 }
 
-function generateStrengths(analysis: CriteriaAnalysis, avgScore: number, recPercent: number): string[] {
+function generateStrengths(analysis: CriteriaAnalysis, avgScore: number): string[] {
 	const strengths: string[] = [];
 
 	if (avgScore >= 3.5) {
 		strengths.push('Prestasi keseluruhan cemerlang dengan purata skor melebihi 3.5');
 	} else if (avgScore >= 3.0) {
 		strengths.push('Prestasi keseluruhan baik dengan purata skor melebihi 3.0');
-	}
-
-	if (recPercent >= 90) {
-		strengths.push('Kadar cadangan positif sangat tinggi (>90%)');
-	} else if (recPercent >= 80) {
-		strengths.push('Kadar cadangan positif tinggi (>80%)');
 	}
 
 	if (analysis.strongest.score >= 3.5) {
@@ -156,17 +143,13 @@ function generateStrengths(analysis: CriteriaAnalysis, avgScore: number, recPerc
 	return strengths;
 }
 
-function generateImprovements(analysis: CriteriaAnalysis, avgScore: number, recPercent: number): string[] {
+function generateImprovements(analysis: CriteriaAnalysis, avgScore: number): string[] {
 	const improvements: string[] = [];
 
 	if (avgScore < 2.5) {
 		improvements.push('Purata skor keseluruhan perlu ditingkatkan segera');
 	} else if (avgScore < 3.0) {
 		improvements.push('Purata skor keseluruhan boleh diperbaiki');
-	}
-
-	if (recPercent < 70) {
-		improvements.push('Kadar cadangan positif perlu ditingkatkan');
 	}
 
 	if (analysis.weakest.score < 2.5) {
@@ -198,23 +181,14 @@ function generateRecommendations(analysis: CriteriaAnalysis, lecturerScores: Lec
 		recommendations.push('Kaji semula proses pemilihan tajuk kuliah');
 	}
 
-	// General recommendations
-	if (lecturerScores.length > 0) {
-		const avgRecPercent = lecturerScores.reduce((sum, l) => sum + l.recommendationYesPercent, 0) / lecturerScores.length;
-		if (avgRecPercent < 70) {
-			recommendations.push('Tingkatkan program pembangunan profesional penceramah');
-		}
-	}
-
 	return recommendations;
 }
 
-function generateKeyFindings(totalEval: number, avgScore: number, recPercent: number, lecturerScores: LecturerSummary[]): string[] {
+function generateKeyFindings(totalEval: number, avgScore: number, lecturerScores: LecturerSummary[]): string[] {
 	const findings: string[] = [];
 
 	findings.push(`Sebanyak ${totalEval} penilaian telah dikumpul untuk tempoh ini`);
 	findings.push(`Purata skor keseluruhan adalah ${avgScore.toFixed(2)}/4.00`);
-	findings.push(`${recPercent.toFixed(1)}% penceramah dicadangkan untuk diteruskan`);
 
 	const highPerformers = lecturerScores.filter(l => l.avgOverall >= 3.5).length;
 	const lowPerformers = lecturerScores.filter(l => l.avgOverall < 2.5).length;
@@ -243,14 +217,6 @@ function assessRisks(lecturerScores: LecturerSummary[]): Array<{ lecturerName: s
 		} else if (l.avgOverall < 3.0) {
 			riskScore += 10;
 			factors.push('Skor purata di bawah paras');
-		}
-
-		if (l.recommendationYesPercent < 50) {
-			riskScore += 30;
-			factors.push('Kadar cadangan positif rendah');
-		} else if (l.recommendationYesPercent < 70) {
-			riskScore += 15;
-			factors.push('Kadar cadangan positif sederhana');
 		}
 
 		if (l.totalEvaluations < 3) {

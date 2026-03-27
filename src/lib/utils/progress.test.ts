@@ -29,8 +29,7 @@ const ratingStateArbitrary = fc.record({
 	q1_tajuk: fc.option(fc.integer({ min: 1, max: 4 }), { nil: null }),
 	q2_ilmu: fc.option(fc.integer({ min: 1, max: 4 }), { nil: null }),
 	q3_penyampaian: fc.option(fc.integer({ min: 1, max: 4 }), { nil: null }),
-	q4_masa: fc.option(fc.integer({ min: 1, max: 4 }), { nil: null }),
-	recommendation: fc.option(fc.boolean(), { nil: null })
+	q4_masa: fc.option(fc.integer({ min: 1, max: 4 }), { nil: null })
 });
 
 describe('Form Progress Utils', () => {
@@ -81,8 +80,7 @@ describe('Form Progress Utils', () => {
 				q1_tajuk: 4,
 				q2_ilmu: 4,
 				q3_penyampaian: 4,
-				q4_masa: 4,
-				recommendation: true
+				q4_masa: 4
 			});
 
 			const formState: FormState = {
@@ -161,12 +159,11 @@ describe('Form Progress Utils', () => {
 				q1_tajuk: 4,
 				q2_ilmu: null,
 				q3_penyampaian: null,
-				q4_masa: null,
-				recommendation: null
+				q4_masa: null
 			});
 
-			// 1 out of 5 fields = 20%
-			expect(calculateRatingsProgress(['lecturer-1'], ratings)).toBe(20);
+			// 1 out of 4 fields = 25%
+			expect(calculateRatingsProgress(['lecturer-1'], ratings)).toBe(25);
 		});
 
 		it('should calculate correct progress for complete ratings', () => {
@@ -175,8 +172,7 @@ describe('Form Progress Utils', () => {
 				q1_tajuk: 4,
 				q2_ilmu: 4,
 				q3_penyampaian: 4,
-				q4_masa: 4,
-				recommendation: true
+				q4_masa: 4
 			});
 
 			expect(calculateRatingsProgress(['lecturer-1'], ratings)).toBe(100);
@@ -188,8 +184,7 @@ describe('Form Progress Utils', () => {
 					q1_tajuk: 4,
 					q2_ilmu: 4,
 					q3_penyampaian: 4,
-					q4_masa: 4,
-					recommendation: true
+					q4_masa: 4
 				}
 			};
 
@@ -214,8 +209,7 @@ describe('Form Progress Utils', () => {
 				q1_tajuk: 4,
 				q2_ilmu: 4,
 				q3_penyampaian: 4,
-				q4_masa: 4,
-				recommendation: true
+				q4_masa: 4
 			});
 
 			const formState: FormState = {

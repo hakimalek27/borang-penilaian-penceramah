@@ -51,9 +51,7 @@ const reportDataArbitrary = fc.record({
 	}),
 	summaryStats: fc.record({
 		totalEvaluations: fc.integer({ min: 0, max: 10000 }),
-		averageScore: fc.float({ min: 1, max: 4, noNaN: true }),
-		recommendationYes: fc.integer({ min: 0, max: 5000 }),
-		recommendationNo: fc.integer({ min: 0, max: 5000 })
+		averageScore: fc.float({ min: 1, max: 4, noNaN: true })
 	}),
 	lecturerScores: fc.array(lecturerScoreArbitrary, { minLength: 0, maxLength: 10 }),
 	evaluations: fc.array(evaluationRecordArbitrary, { minLength: 0, maxLength: 20 })
@@ -84,9 +82,7 @@ describe('PDF Export Utils', () => {
 				dateRange: { from: '2024-01-01', to: '2024-12-31' },
 				summaryStats: {
 					totalEvaluations: 10,
-					averageScore: 3.5,
-					recommendationYes: 8,
-					recommendationNo: 2
+					averageScore: 3.5
 				},
 				lecturerScores: [],
 				evaluations: []
@@ -103,9 +99,7 @@ describe('PDF Export Utils', () => {
 				dateRange: { from: '', to: '' },
 				summaryStats: {
 					totalEvaluations: 10,
-					averageScore: 3.5,
-					recommendationYes: 8,
-					recommendationNo: 2
+					averageScore: 3.5
 				},
 				lecturerScores: [],
 				evaluations: []
@@ -158,9 +152,7 @@ describe('PDF Export Utils', () => {
 				dateRange: { from: '2024-01-01', to: '2024-12-31' },
 				summaryStats: {
 					totalEvaluations: 100,
-					averageScore: 3.5,
-					recommendationYes: 80,
-					recommendationNo: 20
+					averageScore: 3.5
 				},
 				lecturerScores: [
 					{
@@ -232,9 +224,7 @@ describe('PDF Export Utils', () => {
 				dateRange: { from: '2024-01-01', to: '2024-01-31' },
 				summaryStats: {
 					totalEvaluations: 50,
-					averageScore: 3.2,
-					recommendationYes: 40,
-					recommendationNo: 10
+					averageScore: 3.2
 				},
 				lecturerScores: [],
 				evaluations: []
@@ -255,9 +245,7 @@ describe('PDF Export Utils', () => {
 				dateRange: { from: '2024-01-01', to: '2024-12-31' },
 				summaryStats: {
 					totalEvaluations: 100,
-					averageScore: 3.5,
-					recommendationYes: 80,
-					recommendationNo: 20
+					averageScore: 3.5
 				},
 				lecturerScores: [
 					{
@@ -308,9 +296,7 @@ describe('PDF Export Utils', () => {
 				dateRange: { from: '2024-01-01', to: '2024-12-31' },
 				summaryStats: {
 					totalEvaluations: 50,
-					averageScore: 3.25,
-					recommendationYes: 50,
-					recommendationNo: 0
+					averageScore: 3.25
 				},
 				lecturerScores: [],
 				evaluations

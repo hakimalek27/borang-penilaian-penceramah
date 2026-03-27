@@ -1,60 +1,51 @@
 import type { PageServerLoad, Actions } from './$types';
-import { createClient } from '$lib/server/supabase';
+import { query } from '$lib/server/db';
 import { fail } from '@sveltejs/kit';
 
-export const load: PageServerLoad = async ({ cookies }) => {
-	const supabase = createClient(cookies);
+export const load: PageServerLoad = async () => {
+	const result = await query('SELECT key, value FROM settings');
 
-	// Get settings from database
-	const { data: settings } = await supabase
-		.from('settings')
-		.select('key, value');
-
-	const settingsMap = new Map(settings?.map(s => [s.key, s.value]) || []);
+	const settingsMap = new Map(result.rows.map((s: { key: string; value: unknown }) => [s.key, s.value]));
 
 	return {
 		emailNotificationsEnabled: settingsMap.get('email_notifications_enabled') === true,
-		alertThreshold: settingsMap.get('alert_threshold') ?? 2.0,
-		adminEmails: settingsMap.get('admin_emails') ?? []
+		alertThreshold: (settingsMap.get('alert_threshold') as number) ?? 2.0,
+		adminEmails: (settingsMap.get('admin_emails') as string[]) ?? []
 	};
 };
 
 export const actions: Actions = {
-	updateEmailSettings: async ({ request, cookies }) => {
+	updateEmailSettings: async ({ request }) => {
 		const formData = await request.formData();
-		const enabled = formData.get('enabled') === 'true';
-		const emailsRaw = formData.get('emails') as string;
-		
-		// Parse and validate emails
+		const enabled = formData.has('enabled');
+		const emailsRaw = formData.get('emails') as string || '';
+
 		const emails = emailsRaw
 			.split(',')
 			.map(e => e.trim())
 			.filter(e => e.length > 0 && e.includes('@'));
 
-		const supabase = createClient(cookies);
+		try {
+			await query(
+				`INSERT INTO settings (key, value) VALUES ('email_notifications_enabled', $1::jsonb)
+				 ON CONFLICT (key) DO UPDATE SET value = $1::jsonb`,
+				[JSON.stringify(enabled)]
+			);
 
-		// Update email notifications enabled
-		const { error: enabledError } = await supabase
-			.from('settings')
-			.upsert({ key: 'email_notifications_enabled', value: enabled }, { onConflict: 'key' });
-
-		if (enabledError) {
+			await query(
+				`INSERT INTO settings (key, value) VALUES ('admin_emails', $1::jsonb)
+				 ON CONFLICT (key) DO UPDATE SET value = $1::jsonb`,
+				[JSON.stringify(emails)]
+			);
+		} catch (err) {
+			console.error('Error updating email settings:', err);
 			return fail(500, { error: 'Gagal menyimpan tetapan notifikasi' });
-		}
-
-		// Update admin emails
-		const { error: emailsError } = await supabase
-			.from('settings')
-			.upsert({ key: 'admin_emails', value: emails }, { onConflict: 'key' });
-
-		if (emailsError) {
-			return fail(500, { error: 'Gagal menyimpan senarai email' });
 		}
 
 		return { success: true, message: 'Tetapan notifikasi berjaya dikemaskini' };
 	},
 
-	updateAlertThreshold: async ({ request, cookies }) => {
+	updateAlertThreshold: async ({ request }) => {
 		const formData = await request.formData();
 		const threshold = parseFloat(formData.get('threshold') as string);
 
@@ -62,13 +53,14 @@ export const actions: Actions = {
 			return fail(400, { error: 'Nilai threshold tidak sah (mesti antara 1.0 dan 4.0)' });
 		}
 
-		const supabase = createClient(cookies);
-
-		const { error } = await supabase
-			.from('settings')
-			.upsert({ key: 'alert_threshold', value: threshold }, { onConflict: 'key' });
-
-		if (error) {
+		try {
+			await query(
+				`INSERT INTO settings (key, value) VALUES ('alert_threshold', $1::jsonb)
+				 ON CONFLICT (key) DO UPDATE SET value = $1::jsonb`,
+				[JSON.stringify(threshold)]
+			);
+		} catch (err) {
+			console.error('Error updating alert threshold:', err);
 			return fail(500, { error: 'Gagal menyimpan tetapan alert' });
 		}
 

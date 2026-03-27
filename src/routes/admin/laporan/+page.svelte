@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { Button, Select } from '$lib/components/ui';
+	import { Button, Select, Input } from '$lib/components/ui';
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
 	import { enhance } from '$app/forms';
@@ -9,17 +9,138 @@
 	import { generateAnalytics } from '$lib/utils/analytics';
 
 	let { data }: { data: PageData } = $props();
-	
+
 	let deleteConfirmId = $state<string | null>(null);
 	let showExportMenu = $state(false);
 	let showIndividualReport = $state(false);
 
-	let selectedPeriod = $state(data.filters.periodType || 'monthly');
-	let selectedMonth = $state(data.filters.month);
-	let selectedYear = $state(data.filters.year);
+	let dateFrom = $state(data.filters.dateFrom || '');
+	let dateTo = $state(data.filters.dateTo || '');
 	let selectedWeek = $state<number | null>(data.filters.week);
 	let selectedLecturer = $state<string | null>(data.filters.lecturerId);
 	let selectedType = $state<string | null>(data.filters.lectureType);
+
+	// Grouped records state
+	let searchPenilai = $state('');
+	let searchPenceramah = $state('');
+	let recordsPerPage = $state('10');
+	let currentPage = $state(1);
+	let openGroups = $state<Set<string>>(new Set());
+
+	const pageSizeOptions = [
+		{ value: '5', label: '5 kumpulan' },
+		{ value: '10', label: '10 kumpulan' },
+		{ value: '20', label: '20 kumpulan' }
+	];
+
+	const perPage = $derived.by(() => {
+		const value = parseInt(recordsPerPage, 10);
+		return Number.isFinite(value) && value > 0 ? value : 10;
+	});
+
+	const filteredEvaluations = $derived.by(() => {
+		const penilaiTerm = searchPenilai.trim().toLowerCase();
+		const lecturerTerm = searchPenceramah.trim().toLowerCase();
+
+		return data.evaluations.filter((evaluation) => {
+			const penilaiMatch = !penilaiTerm || evaluation.nama_penilai.toLowerCase().includes(penilaiTerm);
+			const lecturerName = (evaluation.lecturer?.nama || '').toLowerCase();
+			const lecturerMatch = !lecturerTerm || lecturerName.includes(lecturerTerm);
+			return penilaiMatch && lecturerMatch;
+		});
+	});
+
+	// Helper to convert date to string for comparison
+	function toDateString(d: unknown): string {
+		if (!d) return '';
+		if (typeof d === 'string') return d;
+		if (d instanceof Date) return d.toISOString().split('T')[0];
+		return String(d);
+	}
+
+	const recordGroups = $derived.by(() => {
+		const groups = new Map<string, {
+			key: string;
+			nama_penilai: string;
+			tarikh_penilaian: string;
+			items: typeof data.evaluations;
+		}>();
+
+		for (const evaluation of filteredEvaluations) {
+			const tarikh = toDateString(evaluation.tarikh_penilaian);
+			const nama = evaluation.nama_penilai || '';
+			const key = `${nama}__${tarikh}`;
+			const existing = groups.get(key);
+			if (existing) {
+				existing.items.push(evaluation);
+			} else {
+				groups.set(key, {
+					key,
+					nama_penilai: nama,
+					tarikh_penilaian: tarikh,
+					items: [evaluation]
+				});
+			}
+		}
+
+		const result = Array.from(groups.values());
+		result.sort((a, b) => b.tarikh_penilaian.localeCompare(a.tarikh_penilaian));
+
+		for (const group of result) {
+			group.items.sort((a, b) => {
+				const tarikhA = toDateString(a.tarikh_penilaian);
+				const tarikhB = toDateString(b.tarikh_penilaian);
+				if (tarikhA === tarikhB) {
+					return (a.lecturer?.nama || '').localeCompare(b.lecturer?.nama || '');
+				}
+				return tarikhB.localeCompare(tarikhA);
+			});
+		}
+
+		return result;
+	});
+
+	const totalPages = $derived.by(() => Math.max(1, Math.ceil(recordGroups.length / perPage)));
+
+	const paginatedGroups = $derived.by(() => {
+		const start = (currentPage - 1) * perPage;
+		return recordGroups.slice(start, start + perPage);
+	});
+
+	const recordsStart = $derived.by(() => recordGroups.length ? (currentPage - 1) * perPage + 1 : 0);
+	const recordsEnd = $derived.by(() => Math.min(recordGroups.length, currentPage * perPage));
+
+	$effect(() => {
+		searchPenilai;
+		searchPenceramah;
+		recordsPerPage;
+		currentPage = 1;
+		openGroups = new Set();
+	});
+
+	$effect(() => {
+		currentPage;
+		openGroups = new Set();
+	});
+
+	$effect(() => {
+		if (currentPage > totalPages) {
+			currentPage = totalPages;
+		}
+		if (currentPage < 1) {
+			currentPage = 1;
+		}
+	});
+
+	function toggleGroup(key: string) {
+		if (openGroups.has(key)) {
+			openGroups = new Set([...openGroups].filter((item) => item !== key));
+			return;
+		}
+		const next = new Set(openGroups);
+		next.add(key);
+		openGroups = next;
+	}
 
 	// Get selected lecturer info for individual report
 	const selectedLecturerInfo = $derived(
@@ -52,23 +173,17 @@
 		let gradeColor: string;
 		if (percentage >= 76) {
 			grade = 'A';
-			gradeColor = '#1a5f2a'; // hijau
+			gradeColor = '#1a5f2a';
 		} else if (percentage >= 51) {
 			grade = 'B';
-			gradeColor = '#f0ad4e'; // kuning
+			gradeColor = '#f0ad4e';
 		} else if (percentage >= 26) {
 			grade = 'C';
-			gradeColor = '#fd7e14'; // oren
+			gradeColor = '#fd7e14';
 		} else {
 			grade = 'D';
-			gradeColor = '#dc3545'; // merah
+			gradeColor = '#dc3545';
 		}
-
-		// Recommendation stats
-		const yesCount = lecturerEvals.filter(e => e.cadangan_teruskan).length;
-		const noCount = lecturerEvals.filter(e => !e.cadangan_teruskan).length;
-		const yesPercent = totalResponses > 0 ? (yesCount / totalResponses) * 100 : 0;
-		const noPercent = totalResponses > 0 ? (noCount / totalResponses) * 100 : 0;
 
 		return {
 			totalResponses,
@@ -81,13 +196,7 @@
 			maxTotal,
 			percentage,
 			grade,
-			gradeColor,
-			recommendation: {
-				yes: yesCount,
-				no: noCount,
-				yesPercent,
-				noPercent
-			}
+			gradeColor
 		};
 	});
 
@@ -95,12 +204,6 @@
 		window.print();
 	}
 
-	const periodOptions = [
-		{ value: 'monthly', label: 'Bulanan' },
-		{ value: 'all', label: 'Semua Tempoh' }
-	];
-	const monthOptions = data.monthNames.map((name, i) => ({ value: i + 1, label: name }));
-	const yearOptions = [2024, 2025, 2026, 2027, 2028].map(y => ({ value: y, label: String(y) }));
 	const weekOptions = [
 		{ value: '', label: 'Semua Minggu' },
 		{ value: 1, label: 'Minggu 1' },
@@ -126,63 +229,68 @@
 		Object.fromEntries(data.lecturers.map(l => [l.id, l.nama]))
 	);
 
-	// Generate analytics
-	const periodLabel = $derived(
-		selectedPeriod === 'all' 
-			? 'Semua Tempoh' 
-			: `${data.monthNames[data.filters.month - 1]} ${data.filters.year}`
-	);
+	// Generate period label for display
+	const periodLabel = $derived(() => {
+		if (dateFrom && dateTo) {
+			return `${dateFrom} - ${dateTo}`;
+		} else if (dateFrom) {
+			return `Dari ${dateFrom}`;
+		} else if (dateTo) {
+			return `Sehingga ${dateTo}`;
+		}
+		return 'Semua Tempoh';
+	});
 
 	const analytics = $derived(generateAnalytics({
-		evaluations: data.evaluations,
-		lecturerScores: data.lecturerScores.map(s => ({
-			...s,
-			recommendationYesPercent: data.evaluations.filter(e => 
-				e.lecturer_id === data.lecturers.find(l => l.nama === s.lecturerName)?.id && e.cadangan_teruskan
-			).length / Math.max(1, data.evaluations.filter(e => 
-				e.lecturer_id === data.lecturers.find(l => l.nama === s.lecturerName)?.id
-			).length) * 100
+		evaluations: data.evaluations.map(e => ({
+			q1_tajuk: e.q1_tajuk,
+			q2_ilmu: e.q2_ilmu,
+			q3_penyampaian: e.q3_penyampaian,
+			q4_masa: e.q4_masa,
+			lecturer_id: e.lecturer_id ?? undefined
 		})),
-		period: periodLabel
+		lecturerScores: data.lecturerScores,
+		period: periodLabel()
 	}));
 
 	function applyFilters() {
 		const params = new URLSearchParams();
-		params.set('period', selectedPeriod);
-		if (selectedPeriod === 'monthly') {
-			params.set('month', String(selectedMonth));
-			params.set('year', String(selectedYear));
-		}
+		if (dateFrom) params.set('from', dateFrom);
+		if (dateTo) params.set('to', dateTo);
 		if (selectedWeek) params.set('week', String(selectedWeek));
 		if (selectedLecturer) params.set('lecturer', selectedLecturer);
 		if (selectedType) params.set('type', selectedType);
 		goto(`/admin/laporan?${params.toString()}`);
 	}
 
+	function clearFilters() {
+		dateFrom = '';
+		dateTo = '';
+		selectedWeek = null;
+		selectedLecturer = null;
+		selectedType = null;
+		goto('/admin/laporan');
+	}
+
 	function handleExportCsv(type: 'full' | 'lecturer' | 'summary') {
-		const monthName = data.monthNames[data.filters.month - 1];
+		const dateStr = new Date().toISOString().split('T')[0];
 		let csv: string;
 		let filename: string;
 
 		if (type === 'full') {
 			csv = generateCsv(data.evaluations, lecturerNames);
-			filename = `penilaian_penuh_${monthName}_${data.filters.year}.csv`;
+			filename = `penilaian_penuh_${dateStr}.csv`;
 		} else if (type === 'lecturer') {
 			const lecturerData: LecturerSummary[] = data.lecturerScores.map(s => ({
 				...s,
-				recommendationYesPercent: data.evaluations.filter(e => 
-					e.lecturer_id === data.lecturers.find(l => l.nama === s.lecturerName)?.id && e.cadangan_teruskan
-				).length / Math.max(1, data.evaluations.filter(e => 
-					e.lecturer_id === data.lecturers.find(l => l.nama === s.lecturerName)?.id
-				).length) * 100,
 				trend: 'stable' as const,
 				riskLevel: analytics.riskAssessment.find(r => r.lecturerName === s.lecturerName)?.riskLevel || 'low'
 			}));
 			csv = generateLecturerSummaryCsv(lecturerData);
-			filename = `ringkasan_penceramah_${monthName}_${data.filters.year}.csv`;
+			filename = `ringkasan_penceramah_${dateStr}.csv`;
 		} else {
 			csv = generateExecutiveSummaryCsv(analytics.summary);
-			filename = `ringkasan_eksekutif_${monthName}_${data.filters.year}.csv`;
+			filename = `ringkasan_eksekutif_${dateStr}.csv`;
 		}
 
 		downloadCsv(csv, filename);
@@ -194,23 +302,21 @@
 	}
 
 	function handleExportPdf() {
-		const monthName = data.monthNames[data.filters.month - 1];
-		
+		const dateStr = new Date().toISOString().split('T')[0];
+
 		// Calculate average score
 		const totalScore = data.lecturerScores.reduce((sum, s) => sum + s.avgOverall, 0);
 		const avgScore = data.lecturerScores.length > 0 ? totalScore / data.lecturerScores.length : 0;
 
 		const reportData: ReportData = {
-			title: `Laporan Penilaian ${monthName} ${data.filters.year}`,
+			title: `Laporan Penilaian Penceramah`,
 			dateRange: {
-				from: `1 ${monthName} ${data.filters.year}`,
-				to: `${new Date(data.filters.year, data.filters.month, 0).getDate()} ${monthName} ${data.filters.year}`
+				from: dateFrom || 'Awal',
+				to: dateTo || 'Kini'
 			},
 			summaryStats: {
 				totalEvaluations: data.evaluations.length,
-				averageScore: avgScore,
-				recommendationYes: data.recommendationStats.ya,
-				recommendationNo: data.recommendationStats.tidak
+				averageScore: avgScore
 			},
 			lecturerScores: data.lecturerScores.map(s => ({
 				...s,
@@ -227,12 +333,12 @@
 				q2: e.q2_ilmu,
 				q3: e.q3_penyampaian,
 				q4: e.q4_masa,
-				cadanganTeruskan: e.cadangan_teruskan
+				cadanganTeruskan: null
 			})),
 			insights: analytics.insights
 		};
 
-		const filename = `laporan-penilaian-${monthName.toLowerCase()}-${data.filters.year}.pdf`;
+		const filename = `laporan-penilaian-${dateStr}.pdf`;
 		downloadPDFReport(reportData, filename);
 		showExportMenu = false;
 	}
@@ -240,8 +346,6 @@
 	// Chart data
 	const chartLabels = $derived(data.lecturerScores.map(s => s.lecturerName));
 	const chartData = $derived(data.lecturerScores.map(s => s.avgOverall));
-	const pieLabels = ['Ya', 'Tidak'];
-	const pieData = $derived([data.recommendationStats.ya, data.recommendationStats.tidak]);
 
 	// Dynamic import for charts (client-side only)
 	let BarChart: any = $state(null);
@@ -285,16 +389,20 @@
 
 	<!-- Filters -->
 	<div class="filter-bar">
-		<Select label="Tempoh" options={periodOptions} bind:value={selectedPeriod} />
-		{#if selectedPeriod === 'monthly'}
-			<Select label="Bulan" options={monthOptions} bind:value={selectedMonth} />
-			<Select label="Tahun" options={yearOptions} bind:value={selectedYear} />
-			<Select label="Minggu" options={weekOptions} bind:value={selectedWeek} />
-		{/if}
+		<div class="date-filter">
+			<label for="dateFrom">Dari Tarikh</label>
+			<input type="date" id="dateFrom" bind:value={dateFrom} />
+		</div>
+		<div class="date-filter">
+			<label for="dateTo">Hingga Tarikh</label>
+			<input type="date" id="dateTo" bind:value={dateTo} />
+		</div>
+		<Select label="Minggu" options={weekOptions} bind:value={selectedWeek} />
 		<Select label="Penceramah" options={lecturerOptions} bind:value={selectedLecturer} />
 		<Select label="Jenis Kuliah" options={typeOptions} bind:value={selectedType} />
 		<div class="filter-action">
 			<Button onclick={applyFilters}>Tapis</Button>
+			<Button variant="secondary" onclick={clearFilters}>Reset</Button>
 			{#if selectedLecturer && individualReport()}
 				<Button variant="secondary" onclick={() => showIndividualReport = !showIndividualReport}>
 					{showIndividualReport ? 'Tutup Laporan' : '📋 Laporan Individu'}
@@ -305,7 +413,7 @@
 
 	<!-- Individual Lecturer Report -->
 	{#if showIndividualReport && selectedLecturerInfo && individualReport()}
-		{@const report = individualReport()}
+		{@const report = individualReport()!}
 		{@const lecturerSchedule = data.lecturerSessions?.filter(s => s.lecturer_id === selectedLecturer) || []}
 		<div class="individual-report" id="individual-report">
 			<div class="report-header">
@@ -317,7 +425,7 @@
 					{/if}
 					<div class="lecturer-details">
 						<h2>{selectedLecturerInfo.nama}</h2>
-						<p class="report-period">Laporan Penilaian: {periodLabel}</p>
+						<p class="report-period">Laporan Penilaian: {periodLabel()}</p>
 						<p class="response-count">{report.totalResponses} responden</p>
 					</div>
 				</div>
@@ -386,26 +494,6 @@
 				</div>
 			</div>
 
-			<div class="recommendation-section">
-				<h3>Cadangan Diteruskan</h3>
-				<div class="recommendation-bars">
-					<div class="rec-item">
-						<span class="rec-label">✅ Ya</span>
-						<div class="rec-bar-container">
-							<div class="rec-bar rec-yes" style="width: {report.recommendation.yesPercent}%"></div>
-						</div>
-						<span class="rec-value">{report.recommendation.yes} ({report.recommendation.yesPercent.toFixed(0)}%)</span>
-					</div>
-					<div class="rec-item">
-						<span class="rec-label">❌ Tidak</span>
-						<div class="rec-bar-container">
-							<div class="rec-bar rec-no" style="width: {report.recommendation.noPercent}%"></div>
-						</div>
-						<span class="rec-value">{report.recommendation.no} ({report.recommendation.noPercent.toFixed(0)}%)</span>
-					</div>
-				</div>
-			</div>
-
 			<div class="grade-legend">
 				<h4>Skala Gred</h4>
 				<div class="legend-items">
@@ -431,14 +519,6 @@
 		<div class="stat-card">
 			<div class="stat-value">{analytics.summary.averageScore.toFixed(2)}</div>
 			<div class="stat-label">Purata Skor</div>
-		</div>
-		<div class="stat-card highlight-green">
-			<div class="stat-value">{data.recommendationStats.ya}</div>
-			<div class="stat-label">Cadangan Ya ({analytics.summary.recommendationYesPercent.toFixed(0)}%)</div>
-		</div>
-		<div class="stat-card highlight-red">
-			<div class="stat-value">{data.recommendationStats.tidak}</div>
-			<div class="stat-label">Cadangan Tidak</div>
 		</div>
 	</div>
 
@@ -501,17 +581,6 @@
 				<p class="loading">Memuatkan carta...</p>
 			{/if}
 		</div>
-
-		<div class="chart-card">
-			<h3>Cadangan Diteruskan</h3>
-			{#if PieChart && (pieData[0] > 0 || pieData[1] > 0)}
-				<svelte:component this={PieChart} labels={pieLabels} data={pieData} />
-			{:else if pieData[0] === 0 && pieData[1] === 0}
-				<p class="no-data">Tiada data untuk dipaparkan</p>
-			{:else}
-				<p class="loading">Memuatkan carta...</p>
-			{/if}
-		</div>
 	</div>
 
 	<!-- Lecturer Scores Table -->
@@ -567,60 +636,98 @@
 		{/if}
 	</div>
 
-	<!-- Evaluation Records Table -->
+	<!-- Evaluation Records -->
 	<div class="table-card">
 		<h3>Rekod Penilaian</h3>
-		{#if data.evaluations.length > 0}
-			<div class="table-wrapper">
-				<table>
-					<thead>
-						<tr>
-							<th>Tarikh</th>
-							<th>Penilai</th>
-							<th>Penceramah</th>
-							<th>Q1</th>
-							<th>Q2</th>
-							<th>Q3</th>
-							<th>Q4</th>
-							<th>Cadangan</th>
-							<th class="action-col">Tindakan</th>
-						</tr>
-					</thead>
-					<tbody>
-						{#each data.evaluations as evaluation}
-							<tr>
-								<td>{evaluation.tarikh_penilaian}</td>
-								<td>{evaluation.nama_penilai}</td>
-								<td>{evaluation.lecturer?.nama || '-'}</td>
-								<td>{evaluation.q1_tajuk}</td>
-								<td>{evaluation.q2_ilmu}</td>
-								<td>{evaluation.q3_penyampaian}</td>
-								<td>{evaluation.q4_masa}</td>
-								<td class={evaluation.cadangan_teruskan ? 'yes' : 'no'}>
-									{evaluation.cadangan_teruskan ? 'Ya' : 'Tidak'}
-								</td>
-								<td class="action-col">
-									{#if deleteConfirmId === evaluation.id}
-										<div class="delete-confirm">
-											<form method="POST" action="?/deleteEvaluation" use:enhance={() => {
-												return async ({ update }) => {
-													deleteConfirmId = null;
-													await update();
-												};
-											}}>
-												<input type="hidden" name="id" value={evaluation.id} />
-												<button type="submit" class="btn-confirm-delete">Pasti?</button>
-											</form>
-											<button class="btn-cancel" onclick={() => deleteConfirmId = null}>Batal</button>
-										</div>
-									{:else}
-										<button class="btn-delete" onclick={() => deleteConfirmId = evaluation.id}>🗑️</button>
-									{/if}
-								</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
+		<div class="records-controls">
+			<div class="records-filters">
+				<Input label="Cari Penilai" placeholder="Nama penilai" bind:value={searchPenilai} />
+				<Input label="Cari Penceramah" placeholder="Nama penceramah" bind:value={searchPenceramah} />
+			</div>
+			<div class="records-pagination">
+				<Select label="Kumpulan per halaman" options={pageSizeOptions} bind:value={recordsPerPage} />
+				<div class="pagination-meta">
+					<span class="pagination-info">
+						{#if recordGroups.length > 0}
+							Paparan {recordsStart}-{recordsEnd} daripada {recordGroups.length} kumpulan
+						{:else}
+							Paparan 0 kumpulan
+						{/if}
+					</span>
+					<div class="pagination-actions">
+						<button type="button" class="pagination-btn" onclick={() => currentPage = Math.max(1, currentPage - 1)} disabled={currentPage <= 1}>Sebelum</button>
+						<span class="pagination-page">Halaman {currentPage} / {totalPages}</span>
+						<button type="button" class="pagination-btn" onclick={() => currentPage = Math.min(totalPages, currentPage + 1)} disabled={currentPage >= totalPages}>Seterusnya</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		{#if recordGroups.length > 0}
+			<div class="records-groups">
+				{#each paginatedGroups as group}
+					<div class="record-group">
+						<button type="button" class="record-toggle" aria-expanded={openGroups.has(group.key)} onclick={() => toggleGroup(group.key)}>
+							<div class="record-main">
+								<span class="record-name">{group.nama_penilai}</span>
+								<span class="record-meta">{toDateString(group.tarikh_penilaian)} &bull; {group.items.length} penilaian</span>
+							</div>
+							<span class="record-caret">{openGroups.has(group.key) ? '-' : '+'}</span>
+						</button>
+
+						{#if openGroups.has(group.key)}
+							<div class="record-details">
+								<div class="table-wrapper record-table">
+									<table>
+										<thead>
+											<tr>
+												<th>Tarikh</th>
+												<th>Penceramah</th>
+												<th>Jenis Kuliah</th>
+												<th>Q1</th>
+												<th>Q2</th>
+												<th>Q3</th>
+												<th>Q4</th>
+												<th class="action-col">Tindakan</th>
+											</tr>
+										</thead>
+										<tbody>
+											{#each group.items as evaluation}
+												<tr>
+													<td>{toDateString(evaluation.tarikh_penilaian)}</td>
+													<td>{evaluation.lecturer?.nama || '-'}</td>
+													<td>{evaluation.session?.jenis_kuliah || '-'}</td>
+													<td>{evaluation.q1_tajuk}</td>
+													<td>{evaluation.q2_ilmu}</td>
+													<td>{evaluation.q3_penyampaian}</td>
+													<td>{evaluation.q4_masa}</td>
+													<td class="action-col">
+														{#if deleteConfirmId === evaluation.id}
+															<div class="delete-confirm">
+																<form method="POST" action="?/deleteEvaluation" use:enhance={() => {
+																	return async ({ update }) => {
+																		deleteConfirmId = null;
+																		await update();
+																	};
+																}}>
+																	<input type="hidden" name="id" value={evaluation.id} />
+																	<button type="submit" class="btn-confirm-delete">Pasti?</button>
+																</form>
+																<button class="btn-cancel" onclick={() => deleteConfirmId = null}>Batal</button>
+															</div>
+														{:else}
+															<button class="btn-delete" onclick={() => deleteConfirmId = evaluation.id}>🗑️</button>
+														{/if}
+													</td>
+												</tr>
+											{/each}
+										</tbody>
+									</table>
+								</div>
+							</div>
+						{/if}
+					</div>
+				{/each}
 			</div>
 		{:else}
 			<p class="no-data">Tiada rekod penilaian</p>
@@ -695,6 +802,33 @@
 	.filter-action {
 		display: flex;
 		align-items: flex-end;
+		gap: 0.5rem;
+	}
+
+	.date-filter {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+
+	.date-filter label {
+		font-size: 0.85rem;
+		font-weight: 500;
+		color: #333;
+	}
+
+	.date-filter input[type="date"] {
+		padding: 0.5rem;
+		border: 1px solid #ddd;
+		border-radius: 0.375rem;
+		font-size: 0.9rem;
+		min-width: 140px;
+	}
+
+	.date-filter input[type="date"]:focus {
+		outline: none;
+		border-color: #1a5f2a;
+		box-shadow: 0 0 0 2px rgba(26, 95, 42, 0.1);
 	}
 
 	.stats-row {
@@ -756,6 +890,163 @@
 		font-size: 1rem;
 		color: #333;
 		margin-bottom: 1rem;
+	}
+
+	/* Records Controls */
+	.records-controls {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 1rem;
+		margin-bottom: 1rem;
+		padding-bottom: 1rem;
+		border-bottom: 1px solid #eee;
+	}
+
+	.records-filters {
+		display: flex;
+		gap: 1rem;
+		flex: 1;
+		min-width: 200px;
+	}
+
+	.records-filters :global(.input-group) {
+		margin-bottom: 0;
+		flex: 1;
+		min-width: 150px;
+	}
+
+	.records-pagination {
+		display: flex;
+		gap: 1rem;
+		align-items: flex-end;
+		flex-wrap: wrap;
+	}
+
+	.records-pagination :global(.select-group) {
+		margin-bottom: 0;
+		min-width: 140px;
+	}
+
+	.pagination-meta {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.pagination-info {
+		font-size: 0.85rem;
+		color: #666;
+	}
+
+	.pagination-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.pagination-btn {
+		padding: 0.4rem 0.75rem;
+		border: 1px solid #ddd;
+		border-radius: 0.375rem;
+		background: white;
+		font-size: 0.85rem;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.pagination-btn:hover:not(:disabled) {
+		background: #f5f5f5;
+		border-color: #1a5f2a;
+	}
+
+	.pagination-btn:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.pagination-page {
+		font-size: 0.85rem;
+		color: #333;
+		min-width: 100px;
+		text-align: center;
+	}
+
+	/* Record Groups */
+	.records-groups {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.record-group {
+		border: 1px solid #e0e0e0;
+		border-radius: 0.5rem;
+		overflow: hidden;
+	}
+
+	.record-toggle {
+		width: 100%;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 0.875rem 1rem;
+		background: #f9f9f9;
+		border: none;
+		cursor: pointer;
+		text-align: left;
+		transition: background 0.2s ease;
+	}
+
+	.record-toggle:hover {
+		background: #f0f0f0;
+	}
+
+	.record-toggle[aria-expanded="true"] {
+		background: #e8f5e9;
+		border-bottom: 1px solid #e0e0e0;
+	}
+
+	.record-main {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+
+	.record-name {
+		font-weight: 600;
+		color: #333;
+		font-size: 0.95rem;
+	}
+
+	.record-meta {
+		font-size: 0.8rem;
+		color: #666;
+	}
+
+	.record-caret {
+		font-size: 1.25rem;
+		font-weight: bold;
+		color: #666;
+		width: 24px;
+		text-align: center;
+	}
+
+	.record-details {
+		padding: 1rem;
+		background: white;
+	}
+
+	.record-table {
+		margin: 0;
+	}
+
+	.record-table table {
+		font-size: 0.85rem;
+	}
+
+	.record-table th,
+	.record-table td {
+		padding: 0.5rem 0.75rem;
 	}
 
 	.table-wrapper {

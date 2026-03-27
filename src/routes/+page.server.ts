@@ -1,5 +1,5 @@
 import type { PageServerLoad } from './$types';
-import { createClient } from '$lib/server/supabase';
+import { query } from '$lib/server/db';
 import type { LectureSession, Lecturer, Hari, JenisKuliah } from '$lib/types/database';
 
 // Define day order (Isnin = 1, Ahad = 7)
@@ -26,38 +26,33 @@ function sortSessions(sessions: (LectureSession & { lecturer: Lecturer | null })
 		// First sort by day
 		const dayDiff = dayOrder[a.hari] - dayOrder[b.hari];
 		if (dayDiff !== 0) return dayDiff;
-		
+
 		// Then sort by lecture type
 		return lectureTypeOrder[a.jenis_kuliah] - lectureTypeOrder[b.jenis_kuliah];
 	});
 }
 
-export const load: PageServerLoad = async ({ cookies }) => {
-	const supabase = createClient(cookies);
-	
-	// Get current month and year
+export const load: PageServerLoad = async () => {
 	const now = new Date();
-	const currentMonth = now.getMonth() + 1;
-	const currentYear = now.getFullYear();
 
-	// Fetch active sessions for current month with lecturer info
-	const { data: sessions, error: sessionsError } = await supabase
-		.from('lecture_sessions')
-		.select(`
-			*,
-			lecturer:lecturers(*)
-		`)
-		.eq('bulan', currentMonth)
-		.eq('tahun', currentYear)
-		.eq('is_active', true);
+	let sessions: (LectureSession & { lecturer: Lecturer | null })[] = [];
 
-	if (sessionsError) {
-		console.error('Error fetching sessions:', sessionsError);
+	try {
+		const result = await query(`
+			SELECT s.*, row_to_json(l) AS lecturer
+			FROM lecture_sessions s
+			LEFT JOIN lecturers l ON l.id = s.lecturer_id
+			WHERE s.is_active = true
+		`);
+
+		sessions = result.rows as (LectureSession & { lecturer: Lecturer | null })[];
+	} catch (error) {
+		console.error('Error fetching sessions:', error);
 	}
 
 	// Group sessions by week and sort properly
 	const sessionsByWeek: Record<number, (LectureSession & { lecturer: Lecturer | null })[]> = {};
-	
+
 	for (let week = 1; week <= 5; week++) {
 		sessionsByWeek[week] = [];
 	}
@@ -68,7 +63,7 @@ export const load: PageServerLoad = async ({ cookies }) => {
 				sessionsByWeek[session.minggu].push(session);
 			}
 		}
-		
+
 		// Sort each week's sessions
 		for (let week = 1; week <= 5; week++) {
 			sessionsByWeek[week] = sortSessions(sessionsByWeek[week]);
@@ -77,8 +72,6 @@ export const load: PageServerLoad = async ({ cookies }) => {
 
 	return {
 		sessionsByWeek,
-		currentMonth,
-		currentYear,
 		today: now.toISOString().split('T')[0],
 		session: null
 	};

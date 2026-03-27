@@ -1,13 +1,13 @@
 import { redirect, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { createClient } from '$lib/server/supabase';
+import { getSession, verifyPassword, createSession } from '$lib/server/auth';
+import { query } from '$lib/server/db';
 
 export const load: PageServerLoad = async ({ cookies }) => {
-	const supabase = createClient(cookies);
-	const { data: { session } } = await supabase.auth.getSession();
+	const admin = await getSession(cookies);
 
 	// If already logged in, redirect to dashboard
-	if (session) {
+	if (admin) {
 		throw redirect(303, '/admin/dashboard');
 	}
 
@@ -24,28 +24,27 @@ export const actions: Actions = {
 			return fail(400, { error: 'Email dan kata laluan diperlukan' });
 		}
 
-		const supabase = createClient(cookies);
+		try {
+			const result = await query(
+				'SELECT id, email, password_hash FROM admins WHERE email = $1 LIMIT 1',
+				[email]
+			);
 
-		const { data, error } = await supabase.auth.signInWithPassword({
-			email,
-			password
-		});
+			const admin = result.rows[0];
 
-		if (error) {
-			console.error('Auth error:', error);
-			return fail(401, { error: 'Pengesahan gagal. Sila semak email dan kata laluan.' });
-		}
+			if (!admin || !admin.password_hash) {
+				return fail(401, { error: 'Pengesahan gagal. Sila semak email dan kata laluan.' });
+			}
 
-		// Check if user is admin
-		const { data: adminData, error: adminError } = await supabase
-			.from('admins')
-			.select('id')
-			.eq('id', data.user.id)
-			.single();
+			const valid = await verifyPassword(password, admin.password_hash);
+			if (!valid) {
+				return fail(401, { error: 'Pengesahan gagal. Sila semak email dan kata laluan.' });
+			}
 
-		if (adminError || !adminData) {
-			await supabase.auth.signOut();
-			return fail(403, { error: 'Akses tidak dibenarkan. Anda bukan admin.' });
+			await createSession(admin.id, cookies);
+		} catch (err) {
+			console.error('Login error:', err);
+			return fail(500, { error: 'Ralat pelayan. Sila cuba lagi.' });
 		}
 
 		throw redirect(303, '/admin/dashboard');

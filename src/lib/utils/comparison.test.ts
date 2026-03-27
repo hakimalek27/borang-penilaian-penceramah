@@ -17,8 +17,7 @@ const evaluationArb = fc.record({
 	q1_tajuk: ratingArb,
 	q2_ilmu: ratingArb,
 	q3_penyampaian: ratingArb,
-	q4_masa: ratingArb,
-	cadangan_teruskan: fc.boolean()
+	q4_masa: ratingArb
 });
 
 const lecturerArb = fc.record({
@@ -80,54 +79,6 @@ describe('Comparison Utils', () => {
 			);
 		});
 
-		/**
-		 * **Feature: sistem-penilaian-kuliah, Property 26: Comparison Recommendation Percentage**
-		 * **Validates: Requirements 18.3**
-		 */
-		it('should calculate recommendation percentage correctly', () => {
-			fc.assert(
-				fc.property(
-					fc.array(lecturerArb, { minLength: 1, maxLength: 5 }),
-					fc.array(evaluationArb, { minLength: 1, maxLength: 50 }),
-					(lecturers, baseEvaluations) => {
-						// Assign evaluations to lecturers
-						const evaluations = baseEvaluations.map((e, i) => ({
-							...e,
-							lecturer_id: lecturers[i % lecturers.length].id
-						}));
-						
-						const lecturerIds = lecturers.map(l => l.id);
-						const result = calculateLecturerComparison(evaluations, lecturers, lecturerIds);
-						
-						// Verify recommendation percentages
-						for (const comparison of result) {
-							const lecturerEvals = evaluations.filter(
-								e => e.lecturer_id === comparison.lecturerId
-							);
-							
-							if (lecturerEvals.length === 0) {
-								expect(comparison.recommendationYesPercent).toBe(0);
-								expect(comparison.recommendationNoPercent).toBe(0);
-							} else {
-								const yesCount = lecturerEvals.filter(e => e.cadangan_teruskan).length;
-								const expectedYesPercent = (yesCount / lecturerEvals.length) * 100;
-								const expectedNoPercent = 100 - expectedYesPercent;
-								
-								expect(comparison.recommendationYesPercent).toBeCloseTo(expectedYesPercent, 0);
-								expect(comparison.recommendationNoPercent).toBeCloseTo(expectedNoPercent, 0);
-								
-								// Sum should be 100%
-								expect(
-									comparison.recommendationYesPercent + comparison.recommendationNoPercent
-								).toBeCloseTo(100, 0);
-							}
-						}
-					}
-				),
-				{ numRuns: 100 }
-			);
-		});
-
 		it('should return correct total evaluations count', () => {
 			const lecturers: LecturerInfo[] = [
 				{ id: 'l1', nama: 'Lecturer 1' },
@@ -135,9 +86,9 @@ describe('Comparison Utils', () => {
 			];
 			
 			const evaluations: EvaluationForComparison[] = [
-				{ lecturer_id: 'l1', q1_tajuk: 3, q2_ilmu: 4, q3_penyampaian: 3, q4_masa: 4, cadangan_teruskan: true },
-				{ lecturer_id: 'l1', q1_tajuk: 4, q2_ilmu: 4, q3_penyampaian: 4, q4_masa: 4, cadangan_teruskan: true },
-				{ lecturer_id: 'l2', q1_tajuk: 2, q2_ilmu: 3, q3_penyampaian: 2, q4_masa: 3, cadangan_teruskan: false }
+				{ lecturer_id: 'l1', q1_tajuk: 3, q2_ilmu: 4, q3_penyampaian: 3, q4_masa: 4 },
+				{ lecturer_id: 'l1', q1_tajuk: 4, q2_ilmu: 4, q3_penyampaian: 4, q4_masa: 4 },
+				{ lecturer_id: 'l2', q1_tajuk: 2, q2_ilmu: 3, q3_penyampaian: 2, q4_masa: 3 }
 			];
 			
 			const result = calculateLecturerComparison(evaluations, lecturers, ['l1', 'l2']);
@@ -153,14 +104,13 @@ describe('Comparison Utils', () => {
 			];
 			
 			const evaluations: EvaluationForComparison[] = [
-				{ lecturer_id: 'l1', q1_tajuk: 3, q2_ilmu: 4, q3_penyampaian: 3, q4_masa: 4, cadangan_teruskan: true }
+				{ lecturer_id: 'l1', q1_tajuk: 3, q2_ilmu: 4, q3_penyampaian: 3, q4_masa: 4 }
 			];
 			
 			const result = calculateLecturerComparison(evaluations, lecturers, ['l1', 'l2']);
 			
 			expect(result[1].totalEvaluations).toBe(0);
 			expect(result[1].avgOverall).toBe(0);
-			expect(result[1].recommendationYesPercent).toBe(0);
 		});
 	});
 
@@ -181,8 +131,6 @@ describe('Comparison Utils', () => {
 				avgQ3: 3.0,
 				avgQ4: 3.75,
 				avgOverall: 3.56,
-				recommendationYesPercent: 80,
-				recommendationNoPercent: 20,
 				totalEvaluations: 10
 			};
 			

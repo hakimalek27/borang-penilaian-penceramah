@@ -1,19 +1,16 @@
 <script lang="ts">
-	import { RadioGroup } from '$lib/components/ui';
 	import type { EvaluationRatings } from '$lib/types/database';
 
 	interface Props {
+		sessionId: string;
 		ratings?: EvaluationRatings;
-		recommendation?: boolean | null;
 		onRatingChange: (question: keyof EvaluationRatings, value: number) => void;
-		onRecommendationChange: (value: boolean) => void;
 	}
 
 	let { 
+		sessionId,
 		ratings = { q1_tajuk: null, q2_ilmu: null, q3_penyampaian: null, q4_masa: null },
-		recommendation = null,
-		onRatingChange,
-		onRecommendationChange
+		onRatingChange
 	}: Props = $props();
 
 	const ratingOptions = [
@@ -23,11 +20,6 @@
 		{ value: 4, label: '4' }
 	];
 
-	const recommendationOptions = [
-		{ value: true, label: 'Ya' },
-		{ value: false, label: 'Tidak' }
-	];
-
 	const questions = [
 		{ key: 'q1_tajuk' as const, text: 'Penceramah mengikut tajuk yang telah ditetapkan' },
 		{ key: 'q2_ilmu' as const, text: 'Penceramah mempunyai ilmu pengetahuan dalam tajuk yang disampaikan' },
@@ -35,46 +27,9 @@
 		{ key: 'q4_masa' as const, text: 'Penceramah menepati jadual dan masa yang ditetapkan' }
 	];
 
-	// Local state for binding
-	let localRatings = $state({
-		q1_tajuk: ratings?.q1_tajuk ?? null,
-		q2_ilmu: ratings?.q2_ilmu ?? null,
-		q3_penyampaian: ratings?.q3_penyampaian ?? null,
-		q4_masa: ratings?.q4_masa ?? null
-	});
-
-	let localRecommendation = $state<boolean | null>(recommendation ?? null);
-
-	// Watch for changes and propagate
-	$effect(() => {
-		if (localRatings.q1_tajuk !== null && localRatings.q1_tajuk !== ratings?.q1_tajuk) {
-			onRatingChange('q1_tajuk', localRatings.q1_tajuk);
-		}
-	});
-
-	$effect(() => {
-		if (localRatings.q2_ilmu !== null && localRatings.q2_ilmu !== ratings?.q2_ilmu) {
-			onRatingChange('q2_ilmu', localRatings.q2_ilmu);
-		}
-	});
-
-	$effect(() => {
-		if (localRatings.q3_penyampaian !== null && localRatings.q3_penyampaian !== ratings?.q3_penyampaian) {
-			onRatingChange('q3_penyampaian', localRatings.q3_penyampaian);
-		}
-	});
-
-	$effect(() => {
-		if (localRatings.q4_masa !== null && localRatings.q4_masa !== ratings?.q4_masa) {
-			onRatingChange('q4_masa', localRatings.q4_masa);
-		}
-	});
-
-	$effect(() => {
-		if (localRecommendation !== null && localRecommendation !== recommendation) {
-			onRecommendationChange(localRecommendation);
-		}
-	});
+	function handleRatingChange(question: keyof EvaluationRatings, value: number) {
+		onRatingChange(question, value);
+	}
 </script>
 
 <div class="evaluation-form">
@@ -90,10 +45,10 @@
 						<label class="rating-option">
 							<input 
 								type="radio" 
-								name={question.key}
+								name="{sessionId}_{question.key}"
 								value={option.value}
-								checked={localRatings[question.key] === option.value}
-								onchange={() => localRatings[question.key] = option.value}
+								checked={ratings?.[question.key] === option.value}
+								onchange={() => handleRatingChange(question.key, option.value)}
 							/>
 							<span class="rating-label">{option.label}</span>
 						</label>
@@ -102,24 +57,6 @@
 			</div>
 		</div>
 	{/each}
-
-	<div class="recommendation-section">
-		<p class="question-text">Cadangan untuk diteruskan?</p>
-		<div class="recommendation-options">
-			{#each recommendationOptions as option}
-				<label class="recommendation-option">
-					<input 
-						type="radio" 
-						name="recommendation"
-						value={option.value}
-						checked={localRecommendation === option.value}
-						onchange={() => localRecommendation = option.value}
-					/>
-					<span class="recommendation-label">{option.label}</span>
-				</label>
-			{/each}
-		</div>
-	</div>
 </div>
 
 <style>
@@ -213,61 +150,6 @@
 
 	.rating-option input:focus-visible + .rating-label {
 		box-shadow: 0 0 0 3px rgba(26, 95, 42, 0.3);
-	}
-
-	.recommendation-section {
-		margin-top: 0.25rem;
-		padding: 0.75rem;
-		background: white;
-		border-radius: 0.5rem;
-		border: 1px solid #e8e8e8;
-	}
-
-	.recommendation-section .question-text {
-		font-weight: 600;
-		color: #1a5f2a;
-		margin-bottom: 0.75rem;
-	}
-
-	.recommendation-options {
-		display: flex;
-		gap: 0.75rem;
-	}
-
-	.recommendation-option {
-		flex: 1;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 0.5rem;
-		cursor: pointer;
-		padding: 0.75rem 1rem;
-		border: 2px solid #e0e0e0;
-		border-radius: 0.625rem;
-		transition: all 0.15s ease;
-		background: white;
-		touch-action: manipulation;
-	}
-
-	.recommendation-option:active {
-		transform: scale(0.98);
-	}
-
-	.recommendation-option:has(input:checked) {
-		border-color: #1a5f2a;
-		background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
-	}
-
-	.recommendation-option input {
-		accent-color: #1a5f2a;
-		width: 18px;
-		height: 18px;
-	}
-
-	.recommendation-label {
-		font-weight: 600;
-		color: #333;
-		font-size: 0.95rem;
 	}
 
 	/* Mobile optimizations */

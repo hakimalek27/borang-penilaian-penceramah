@@ -40,7 +40,7 @@
 
 	<div class="textarea-group">
 		<label for="alamat">
-			Alamat
+			Alamat ringkas
 			<span class="required">*</span>
 		</label>
 		<textarea 

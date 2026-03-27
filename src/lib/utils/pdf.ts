@@ -11,8 +11,6 @@ export interface ReportData {
 	summaryStats: {
 		totalEvaluations: number;
 		averageScore: number;
-		recommendationYes: number;
-		recommendationNo: number;
 	};
 	lecturerScores: LecturerScore[];
 	evaluations: EvaluationRecord[];
@@ -42,7 +40,7 @@ export interface EvaluationRecord {
 	q2: number;
 	q3: number;
 	q4: number;
-	cadanganTeruskan: boolean;
+	cadanganTeruskan: boolean | null;
 }
 
 export interface ReportInsights {
@@ -58,12 +56,10 @@ export interface ComparisonData {
 	previousPeriod?: {
 		totalEvaluations: number;
 		averageScore: number;
-		recommendationYesPercent: number;
 	};
 	changePercent?: {
 		evaluations: number;
 		score: number;
-		recommendation: number;
 	};
 }
 
@@ -87,12 +83,6 @@ export function validateReportData(data: ReportData): { valid: boolean; errors: 
 		}
 		if (typeof data.summaryStats.averageScore !== 'number') {
 			errors.push('summaryStats.averageScore is required');
-		}
-		if (typeof data.summaryStats.recommendationYes !== 'number') {
-			errors.push('summaryStats.recommendationYes is required');
-		}
-		if (typeof data.summaryStats.recommendationNo !== 'number') {
-			errors.push('summaryStats.recommendationNo is required');
 		}
 	}
 	if (!Array.isArray(data.lecturerScores)) {
@@ -168,27 +158,20 @@ export function generatePDFReport(data: ReportData): jsPDF {
 	
 	doc.text(`Jumlah Penilaian: ${stats.totalEvaluations}`, col1X, yPos + 12);
 	doc.text(`Purata Skor: ${stats.averageScore.toFixed(2)}/4.00`, col2X, yPos + 12);
-	
-	const totalRec = stats.recommendationYes + stats.recommendationNo;
-	const yesPercent = totalRec > 0 ? ((stats.recommendationYes / totalRec) * 100).toFixed(1) : '0';
-	const noPercent = totalRec > 0 ? ((stats.recommendationNo / totalRec) * 100).toFixed(1) : '0';
-	
-	doc.text(`Cadangan Ya: ${stats.recommendationYes} (${yesPercent}%)`, col1X, yPos + 20);
-	doc.text(`Cadangan Tidak: ${stats.recommendationNo} (${noPercent}%)`, col2X, yPos + 20);
 
 	// Add comparison with previous period if available
 	if (data.comparison?.changePercent) {
 		const change = data.comparison.changePercent;
 		const scoreChange = change.score >= 0 ? `+${change.score.toFixed(1)}%` : `${change.score.toFixed(1)}%`;
-		doc.text(`Perubahan Skor: ${scoreChange} berbanding tempoh sebelum`, col1X, yPos + 28);
+		doc.text(`Perubahan Skor: ${scoreChange} berbanding tempoh sebelum`, col1X, yPos + 20);
 	}
 
 	// Add top performer and needs attention
 	if (data.insights?.topPerformer) {
-		doc.text(`Prestasi Terbaik: ${data.insights.topPerformer.name} (${data.insights.topPerformer.score.toFixed(2)})`, col1X, yPos + 36);
+		doc.text(`Prestasi Terbaik: ${data.insights.topPerformer.name} (${data.insights.topPerformer.score.toFixed(2)})`, col1X, yPos + 28);
 	}
 	if (data.insights?.needsAttention) {
-		doc.text(`Perlu Perhatian: ${data.insights.needsAttention.name} (${data.insights.needsAttention.score.toFixed(2)})`, col2X, yPos + 36);
+		doc.text(`Perlu Perhatian: ${data.insights.needsAttention.name} (${data.insights.needsAttention.score.toFixed(2)})`, col2X, yPos + 28);
 	}
 	
 	yPos += 55;
@@ -294,27 +277,25 @@ export function generatePDFReport(data: ReportData): jsPDF {
 
 		autoTable(doc, {
 			startY: yPos,
-			head: [['Penilai', 'Penceramah', 'Tarikh', 'Minggu', 'Jenis', 'Skor', 'Cadangan']],
+			head: [['Penilai', 'Penceramah', 'Tarikh', 'Minggu', 'Jenis', 'Skor']],
 			body: data.evaluations.slice(0, 20).map(e => [
 				e.namaPenilai.substring(0, 15),
 				e.lecturerName.substring(0, 15),
 				e.tarikh,
 				`M${e.minggu}`,
 				e.jenisKuliah,
-				((e.q1 + e.q2 + e.q3 + e.q4) / 4).toFixed(2),
-				e.cadanganTeruskan ? 'Ya' : 'Tidak'
+				((e.q1 + e.q2 + e.q3 + e.q4) / 4).toFixed(2)
 			]),
 			theme: 'striped',
 			headStyles: { fillColor: [26, 95, 42] },
 			styles: { fontSize: 8 },
 			columnStyles: {
-				0: { cellWidth: 30 },
-				1: { cellWidth: 30 },
-				2: { cellWidth: 22 },
-				3: { cellWidth: 15, halign: 'center' },
-				4: { cellWidth: 20 },
-				5: { cellWidth: 18, halign: 'center' },
-				6: { cellWidth: 20, halign: 'center' }
+				0: { cellWidth: 35 },
+				1: { cellWidth: 35 },
+				2: { cellWidth: 25 },
+				3: { cellWidth: 18, halign: 'center' },
+				4: { cellWidth: 25 },
+				5: { cellWidth: 20, halign: 'center' }
 			}
 		});
 

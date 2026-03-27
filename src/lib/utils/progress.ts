@@ -19,7 +19,6 @@ export interface RatingState {
 	q2_ilmu: number | null;
 	q3_penyampaian: number | null;
 	q4_masa: number | null;
-	recommendation: boolean | null;
 }
 
 /**
@@ -108,15 +107,14 @@ export function calculateRatingsProgress(
 	for (const lecturerId of selectedLecturers) {
 		const ratings = ratingsMap.get(lecturerId);
 		
-		// Each lecturer has 5 fields (4 questions + 1 recommendation)
-		totalFields += 5;
+		// Each lecturer has 4 rating fields
+		totalFields += 4;
 
 		if (ratings) {
 			if (ratings.q1_tajuk !== null) completedFields++;
 			if (ratings.q2_ilmu !== null) completedFields++;
 			if (ratings.q3_penyampaian !== null) completedFields++;
 			if (ratings.q4_masa !== null) completedFields++;
-			if (ratings.recommendation !== null) completedFields++;
 		}
 	}
 

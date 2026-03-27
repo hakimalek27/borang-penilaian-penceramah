@@ -6,20 +6,16 @@
 		session: LectureSession & { lecturer: Lecturer | null };
 		isExpanded: boolean;
 		ratings?: EvaluationRatings;
-		recommendation?: boolean | null;
 		onToggle: () => void;
 		onRatingChange: (question: keyof EvaluationRatings, value: number) => void;
-		onRecommendationChange: (value: boolean) => void;
 	}
 
 	let { 
 		session, 
 		isExpanded, 
 		ratings,
-		recommendation,
 		onToggle, 
-		onRatingChange,
-		onRecommendationChange
+		onRatingChange
 	}: Props = $props();
 
 	const lecturer = $derived(session.lecturer);
@@ -58,10 +54,9 @@
 	{#if isExpanded}
 		<div class="card-body">
 			<EvaluationForm 
+				sessionId={session.id}
 				{ratings}
-				{recommendation}
 				{onRatingChange}
-				{onRecommendationChange}
 			/>
 		</div>
 	{/if}

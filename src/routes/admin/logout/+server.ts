@@ -1,9 +1,8 @@
 import { redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { createClient } from '$lib/server/supabase';
+import { deleteSession } from '$lib/server/auth';
 
 export const POST: RequestHandler = async ({ cookies }) => {
-	const supabase = createClient(cookies);
-	await supabase.auth.signOut();
+	await deleteSession(cookies);
 	throw redirect(303, '/admin/login');
 };

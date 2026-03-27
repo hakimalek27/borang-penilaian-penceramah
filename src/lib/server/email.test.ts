@@ -24,8 +24,7 @@ const evaluationSummaryArbitrary = fc.record({
 	lecturerName: fc.string({ minLength: 1, maxLength: 100 }).filter(s => s.trim().length > 0),
 	date: fc.date({ min: new Date('2024-01-01'), max: new Date('2030-12-31') })
 		.map(d => d.toISOString().split('T')[0]),
-	overallRating: fc.float({ min: 1, max: 4, noNaN: true }),
-	recommendation: fc.boolean()
+	overallRating: fc.float({ min: 1, max: 4, noNaN: true })
 });
 
 describe('Email Notification Service', () => {
@@ -63,12 +62,10 @@ describe('Email Notification Service', () => {
 						expect(body).toContain(summary.lecturerName);
 						expect(body).toContain(summary.date);
 						expect(body).toContain(summary.overallRating.toFixed(2));
-						expect(body).toContain(summary.recommendation ? 'Ya' : 'Tidak');
 
 						// HTML should contain date and rating (these don't need escaping)
 						expect(html).toContain(summary.date);
 						expect(html).toContain(summary.overallRating.toFixed(2));
-						expect(html).toContain(summary.recommendation ? 'Ya' : 'Tidak');
 						
 						// For names, check that they appear in some form (escaped or not)
 						// The escapeHtml function converts special chars, so we check the HTML is valid
@@ -111,8 +108,7 @@ describe('Email Notification Service', () => {
 				evaluatorName: '<script>alert("xss")</script>',
 				lecturerName: '"><img src=x onerror=alert(1)>',
 				date: '2024-01-01',
-				overallRating: 3.5,
-				recommendation: true
+				overallRating: 3.5
 			};
 
 			const { html } = formatEmailContent(maliciousSummary);
@@ -152,8 +148,7 @@ describe('Email Notification Service', () => {
 				evaluatorName: '',
 				lecturerName: 'Test Lecturer',
 				date: '2024-01-01',
-				overallRating: 3.0,
-				recommendation: true
+				overallRating: 3.0
 			};
 
 			const result = validateEvaluationSummary(summary);
@@ -166,8 +161,7 @@ describe('Email Notification Service', () => {
 				evaluatorName: 'Test',
 				lecturerName: 'Test Lecturer',
 				date: '2024-01-01',
-				overallRating: 5.0, // Invalid - should be 1-4
-				recommendation: true
+				overallRating: 5.0 // Invalid - should be 1-4
 			};
 
 			const result = validateEvaluationSummary(summary);
@@ -227,8 +221,7 @@ describe('Email Notification Service', () => {
 				evaluatorName: '',
 				lecturerName: '',
 				date: '',
-				overallRating: 10, // Invalid
-				recommendation: 'maybe' // Invalid type
+				overallRating: 10 // Invalid
 			} as unknown as EvaluationSummary;
 
 			// Should not throw

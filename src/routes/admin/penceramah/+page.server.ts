@@ -1,27 +1,69 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { createClient } from '$lib/server/supabase';
+import { query } from '$lib/server/db';
+import { writeFile, unlink, mkdir } from 'fs/promises';
+import { existsSync } from 'fs';
+import path from 'path';
 
-export const load: PageServerLoad = async ({ cookies }) => {
-	const supabase = createClient(cookies);
+// Upload config
+const PROD_UPLOAD_DIR = '/var/www/mamkl.my/bpp/uploads/penceramah';
+const DEV_UPLOAD_DIR = 'static/uploads/penceramah';
+const PROD_URL_PREFIX = 'https://bpp.mamkl.my/upload/penceramah';
+const DEV_URL_PREFIX = '/uploads/penceramah';
 
-	const { data: lecturers, error } = await supabase
-		.from('lecturers')
-		.select('*')
-		.order('sort_order', { ascending: true })
-		.order('nama', { ascending: true });
+function getUploadDir(): string {
+	return process.env.NODE_ENV === 'production' ? PROD_UPLOAD_DIR : DEV_UPLOAD_DIR;
+}
 
-	if (error) {
-		console.error('Error fetching lecturers:', error);
+function getUrlPrefix(): string {
+	return process.env.NODE_ENV === 'production' ? PROD_URL_PREFIX : DEV_URL_PREFIX;
+}
+
+async function saveUpload(file: File): Promise<string> {
+	const dir = getUploadDir();
+	if (!existsSync(dir)) {
+		await mkdir(dir, { recursive: true });
 	}
 
+	const ext = file.name.split('.').pop();
+	const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+	const filePath = path.join(dir, fileName);
+
+	const buffer = Buffer.from(await file.arrayBuffer());
+	await writeFile(filePath, buffer);
+
+	return `${getUrlPrefix()}/${fileName}`;
+}
+
+async function removeUploadByUrl(url: string | null): Promise<void> {
+	if (!url) return;
+
+	// Extract filename from URL
+	const fileName = url.split('/').pop();
+	if (!fileName) return;
+
+	const dir = getUploadDir();
+	const filePath = path.join(dir, fileName);
+
+	try {
+		await unlink(filePath);
+	} catch {
+		// File may not exist, ignore
+	}
+}
+
+export const load: PageServerLoad = async () => {
+	const result = await query(
+		'SELECT * FROM lecturers ORDER BY sort_order ASC, nama ASC'
+	);
+
 	return {
-		lecturers: lecturers || []
+		lecturers: result.rows
 	};
 };
 
 export const actions: Actions = {
-	create: async ({ request, cookies }) => {
+	create: async ({ request }) => {
 		const formData = await request.formData();
 		const nama = formData.get('nama') as string;
 		const keterangan = formData.get('keterangan') as string;
@@ -32,50 +74,31 @@ export const actions: Actions = {
 			return fail(400, { error: 'Nama penceramah diperlukan' });
 		}
 
-		const supabase = createClient(cookies);
 		let gambar_url: string | null = null;
 
-		// Upload image if provided
 		if (gambar && gambar.size > 0) {
-			const fileExt = gambar.name.split('.').pop();
-			const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
-			
-			const { error: uploadError } = await supabase.storage
-				.from('lecturer-photos')
-				.upload(fileName, gambar, {
-					contentType: gambar.type
-				});
-
-			if (uploadError) {
-				console.error('Error uploading image:', uploadError);
+			try {
+				gambar_url = await saveUpload(gambar);
+			} catch (err) {
+				console.error('Error uploading image:', err);
 				return fail(500, { error: 'Ralat semasa memuat naik gambar' });
 			}
-
-			const { data: urlData } = supabase.storage
-				.from('lecturer-photos')
-				.getPublicUrl(fileName);
-			
-			gambar_url = urlData.publicUrl;
 		}
 
-		const { error } = await supabase
-			.from('lecturers')
-			.insert({
-				nama: nama.trim(),
-				gambar_url,
-				keterangan: keterangan?.trim() || null,
-				sort_order
-			});
-
-		if (error) {
-			console.error('Error creating lecturer:', error);
+		try {
+			await query(
+				'INSERT INTO lecturers (nama, gambar_url, keterangan, sort_order) VALUES ($1, $2, $3, $4)',
+				[nama.trim(), gambar_url, keterangan?.trim() || null, sort_order]
+			);
+		} catch (err) {
+			console.error('Error creating lecturer:', err);
 			return fail(500, { error: 'Ralat semasa menambah penceramah' });
 		}
 
 		return { success: true };
 	},
 
-	update: async ({ request, cookies }) => {
+	update: async ({ request }) => {
 		const formData = await request.formData();
 		const id = formData.get('id') as string;
 		const nama = formData.get('nama') as string;
@@ -87,67 +110,40 @@ export const actions: Actions = {
 			return fail(400, { error: 'ID dan nama penceramah diperlukan' });
 		}
 
-		const supabase = createClient(cookies);
-		
-		const updateData: { nama: string; keterangan: string | null; sort_order: number; gambar_url?: string } = {
-			nama: nama.trim(),
-			keterangan: keterangan?.trim() || null,
-			sort_order
-		};
+		let gambar_url_update = '';
+		let params: unknown[] = [nama.trim(), keterangan?.trim() || null, sort_order, id];
 
-		// Upload new image if provided
 		if (gambar && gambar.size > 0) {
 			// Get existing photo to delete
-			const { data: existingLecturer } = await supabase
-				.from('lecturers')
-				.select('gambar_url')
-				.eq('id', id)
-				.single();
-
-			// Delete old photo if exists
-			if (existingLecturer?.gambar_url) {
-				const oldFileName = existingLecturer.gambar_url.split('/').pop();
-				if (oldFileName) {
-					await supabase.storage.from('lecturer-photos').remove([oldFileName]);
-				}
+			const existing = await query('SELECT gambar_url FROM lecturers WHERE id = $1', [id]);
+			if (existing.rows[0]?.gambar_url) {
+				await removeUploadByUrl(existing.rows[0].gambar_url);
 			}
 
-			// Upload new photo
-			const fileExt = gambar.name.split('.').pop();
-			const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
-			
-			const { error: uploadError } = await supabase.storage
-				.from('lecturer-photos')
-				.upload(fileName, gambar, {
-					contentType: gambar.type
-				});
-
-			if (uploadError) {
-				console.error('Error uploading image:', uploadError);
+			try {
+				const newUrl = await saveUpload(gambar);
+				gambar_url_update = ', gambar_url = $5';
+				params.push(newUrl);
+			} catch (err) {
+				console.error('Error uploading image:', err);
 				return fail(500, { error: 'Ralat semasa memuat naik gambar' });
 			}
-
-			const { data: urlData } = supabase.storage
-				.from('lecturer-photos')
-				.getPublicUrl(fileName);
-			
-			updateData.gambar_url = urlData.publicUrl;
 		}
 
-		const { error } = await supabase
-			.from('lecturers')
-			.update(updateData)
-			.eq('id', id);
-
-		if (error) {
-			console.error('Error updating lecturer:', error);
+		try {
+			await query(
+				`UPDATE lecturers SET nama = $1, keterangan = $2, sort_order = $3${gambar_url_update} WHERE id = $4`,
+				params
+			);
+		} catch (err) {
+			console.error('Error updating lecturer:', err);
 			return fail(500, { error: 'Ralat semasa mengemaskini penceramah' });
 		}
 
 		return { success: true };
 	},
 
-	delete: async ({ request, cookies }) => {
+	delete: async ({ request }) => {
 		const formData = await request.formData();
 		const id = formData.get('id') as string;
 
@@ -155,29 +151,16 @@ export const actions: Actions = {
 			return fail(400, { error: 'ID penceramah diperlukan' });
 		}
 
-		const supabase = createClient(cookies);
-
-		// Delete associated photo from storage if exists
-		const { data: lecturer } = await supabase
-			.from('lecturers')
-			.select('gambar_url')
-			.eq('id', id)
-			.single();
-
-		if (lecturer?.gambar_url) {
-			const fileName = lecturer.gambar_url.split('/').pop();
-			if (fileName) {
-				await supabase.storage.from('lecturer-photos').remove([fileName]);
-			}
+		// Get photo URL before deleting
+		const existing = await query('SELECT gambar_url FROM lecturers WHERE id = $1', [id]);
+		if (existing.rows[0]?.gambar_url) {
+			await removeUploadByUrl(existing.rows[0].gambar_url);
 		}
 
-		const { error } = await supabase
-			.from('lecturers')
-			.delete()
-			.eq('id', id);
-
-		if (error) {
-			console.error('Error deleting lecturer:', error);
+		try {
+			await query('DELETE FROM lecturers WHERE id = $1', [id]);
+		} catch (err) {
+			console.error('Error deleting lecturer:', err);
 			return fail(500, { error: 'Ralat semasa memadam penceramah' });
 		}
 

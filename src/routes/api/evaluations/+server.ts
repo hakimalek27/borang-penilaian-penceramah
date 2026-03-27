@@ -1,11 +1,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { createClient } from '$lib/server/supabase';
+import { query } from '$lib/server/db';
 import { validateEvaluatorInfo, isRatingsComplete, sanitizeString } from '$lib/utils/validation';
-import { sendNotificationSafe, type EvaluationSummary } from '$lib/server/email';
 import type { EvaluationSubmission } from '$lib/types/database';
 
-export const POST: RequestHandler = async ({ request, cookies }) => {
+export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const body: EvaluationSubmission = await request.json();
 		const { evaluator, evaluations, komenPenceramah, cadanganMasjid } = body;
@@ -21,7 +20,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 
 		// Filter only complete evaluations
 		const completeEvaluations = evaluations.filter(
-			(e) => isRatingsComplete(e.ratings) && e.recommendation !== null
+			(e) => isRatingsComplete(e.ratings)
 		);
 
 		if (completeEvaluations.length === 0) {
@@ -30,17 +29,6 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 				{ status: 400 }
 			);
 		}
-
-		const supabase = createClient(cookies);
-
-		// Get lecturer names for email notifications
-		const lecturerIds = [...new Set(completeEvaluations.map(e => e.lecturerId))];
-		const { data: lecturers } = await supabase
-			.from('lecturers')
-			.select('id, nama')
-			.in('id', lecturerIds);
-		
-		const lecturerMap = new Map(lecturers?.map(l => [l.id, l.nama]) || []);
 
 		// Prepare evaluation records
 		const records = completeEvaluations.map((evaluation) => ({
@@ -54,52 +42,57 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 			q2_ilmu: evaluation.ratings.q2_ilmu,
 			q3_penyampaian: evaluation.ratings.q3_penyampaian,
 			q4_masa: evaluation.ratings.q4_masa,
-			cadangan_teruskan: evaluation.recommendation,
 			komen_penceramah: komenPenceramah ? sanitizeString(komenPenceramah) : null,
 			cadangan_masjid: cadanganMasjid ? sanitizeString(cadanganMasjid) : null
 		}));
 
-		// Insert evaluations
-		const { data, error } = await supabase
-			.from('evaluations')
-			.insert(records)
-			.select();
+		const values: unknown[] = [];
+		const placeholders = records
+			.map((r, i) => {
+				const base = i * 12;
+				values.push(
+					r.session_id,
+					r.lecturer_id,
+					r.nama_penilai,
+					r.umur,
+					r.alamat,
+					r.tarikh_penilaian,
+					r.q1_tajuk,
+					r.q2_ilmu,
+					r.q3_penyampaian,
+					r.q4_masa,
+					r.komen_penceramah,
+					r.cadangan_masjid
+				);
+				return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}, $${base + 8}, $${base + 9}, $${base + 10}, $${base + 11}, $${base + 12})`;
+			})
+			.join(', ');
 
-		if (error) {
-			console.error('Database error:', error);
-			return json(
-				{ error: 'Ralat semasa menyimpan penilaian. Sila cuba lagi.' },
-				{ status: 500 }
-			);
-		}
+		const insertSql = `
+			INSERT INTO evaluations (
+				session_id,
+				lecturer_id,
+				nama_penilai,
+				umur,
+				alamat,
+				tarikh_penilaian,
+				q1_tajuk,
+				q2_ilmu,
+				q3_penyampaian,
+				q4_masa,
+				komen_penceramah,
+				cadangan_masjid
+			)
+			VALUES ${placeholders}
+			RETURNING id
+		`;
 
-		// Send email notifications (non-blocking)
-		// This runs in the background and won't affect the response
-		for (const evaluation of completeEvaluations) {
-			const ratings = evaluation.ratings;
-			const overallRating = (
-				(ratings.q1_tajuk || 0) + 
-				(ratings.q2_ilmu || 0) + 
-				(ratings.q3_penyampaian || 0) + 
-				(ratings.q4_masa || 0)
-			) / 4;
-
-			const summary: EvaluationSummary = {
-				evaluatorName: evaluator.nama,
-				lecturerName: lecturerMap.get(evaluation.lecturerId) || 'Unknown',
-				date: evaluator.tarikh,
-				overallRating,
-				recommendation: evaluation.recommendation ?? false
-			};
-
-			// Fire and forget - don't await
-			sendNotificationSafe(summary);
-		}
+		const result = await query(insertSql, values);
 
 		return json({
 			success: true,
 			message: 'Penilaian berjaya dihantar',
-			count: data?.length || 0
+			count: result.rowCount || 0
 		});
 	} catch (error) {
 		console.error('Server error:', error);

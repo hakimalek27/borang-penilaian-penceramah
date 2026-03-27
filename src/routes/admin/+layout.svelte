@@ -19,8 +19,10 @@
 		{ href: '/admin/penceramah', label: 'Tetapan Penceramah', icon: '👤' },
 		{ href: '/admin/jadual', label: 'Tetapan Jadual', icon: '📅' },
 		{ href: '/admin/laporan', label: 'Laporan Penilaian', icon: '📈' },
+		{ href: '/admin/perbandingan', label: 'Perbandingan Penceramah', icon: '⚖️' },
 		{ href: '/admin/komen', label: 'Komen & Cadangan', icon: '💬' },
-		{ href: '/admin/qrcode', label: 'QR Code Borang', icon: '📱' }
+		{ href: '/admin/qrcode', label: 'QR Code Borang', icon: '📱' },
+		{ href: '/admin/tetapan', label: 'Tetapan Sistem', icon: '⚙️' }
 	];
 
 	let sidebarOpen = $state(false);

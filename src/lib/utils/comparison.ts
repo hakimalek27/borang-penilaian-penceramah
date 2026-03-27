@@ -8,7 +8,6 @@ export interface EvaluationForComparison {
 	q2_ilmu: number;
 	q3_penyampaian: number;
 	q4_masa: number;
-	cadangan_teruskan: boolean;
 }
 
 export interface LecturerComparison {
@@ -19,8 +18,6 @@ export interface LecturerComparison {
 	avgQ3: number;
 	avgQ4: number;
 	avgOverall: number;
-	recommendationYesPercent: number;
-	recommendationNoPercent: number;
 	totalEvaluations: number;
 }
 
@@ -56,8 +53,6 @@ export function calculateLecturerComparison(
 				avgQ3: 0,
 				avgQ4: 0,
 				avgOverall: 0,
-				recommendationYesPercent: 0,
-				recommendationNoPercent: 0,
 				totalEvaluations: 0
 			};
 		}
@@ -73,10 +68,6 @@ export function calculateLecturerComparison(
 		const avgQ4 = sumQ4 / totalEvaluations;
 		const avgOverall = (avgQ1 + avgQ2 + avgQ3 + avgQ4) / 4;
 		
-		const yesCount = lecturerEvals.filter(e => e.cadangan_teruskan).length;
-		const recommendationYesPercent = (yesCount / totalEvaluations) * 100;
-		const recommendationNoPercent = 100 - recommendationYesPercent;
-		
 		return {
 			lecturerId,
 			lecturerName: lecturerMap.get(lecturerId) || 'Unknown',
@@ -85,8 +76,6 @@ export function calculateLecturerComparison(
 			avgQ3: Number(avgQ3.toFixed(2)),
 			avgQ4: Number(avgQ4.toFixed(2)),
 			avgOverall: Number(avgOverall.toFixed(2)),
-			recommendationYesPercent: Number(recommendationYesPercent.toFixed(1)),
-			recommendationNoPercent: Number(recommendationNoPercent.toFixed(1)),
 			totalEvaluations
 		};
 	});

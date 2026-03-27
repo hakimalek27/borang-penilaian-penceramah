@@ -56,8 +56,7 @@ const draftDataArbitrary = fc.record({
 			q1_tajuk: fc.option(fc.integer({ min: 1, max: 4 }), { nil: null }),
 			q2_ilmu: fc.option(fc.integer({ min: 1, max: 4 }), { nil: null }),
 			q3_penyampaian: fc.option(fc.integer({ min: 1, max: 4 }), { nil: null }),
-			q4_masa: fc.option(fc.integer({ min: 1, max: 4 }), { nil: null }),
-			recommendation: fc.option(fc.boolean(), { nil: null })
+			q4_masa: fc.option(fc.integer({ min: 1, max: 4 }), { nil: null })
 		})
 	),
 	komenPenceramah: fc.string({ minLength: 0, maxLength: 200 }),
